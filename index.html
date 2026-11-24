@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tissue Kalite Kontrol - Görsel Hata Teşhis ve Müdahale Rehberi</title>
+  <script async src="https://docs.opencv.org/4.8.0/opencv.js" onload="onOpenCvReady();"></script>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --primary: #f97316;
+      --primary-hover: #ea580c;
+      --success: #22c55e;
+      --accent: #38bdf8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 20px; line-height: 1.5; }
+    .container { max-width: 1100px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+    header h1 { font-size: 1.6rem; margin-bottom: 6px; }
+    .status-badge {
+      display: inline-block; padding: 4px 12px; border-radius: 999px;
+      font-size: 0.85rem; background: #334155; color: #fbbf24; font-weight: 600;
+    }
+    .status-badge.ready { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+    .grid { display: grid; grid-template-columns: 1fr 1.15fr; gap: 20px; }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+    .card h2 { font-size: 1.05rem; color: var(--accent); margin-bottom: 14px; }
+    .upload-box {
+      border: 2px dashed var(--border); border-radius: 10px; padding: 24px;
+      text-align: center; cursor: pointer; transition: 0.2s; background: rgba(15, 23, 42, 0.5);
+    }
+    .upload-box:hover { border-color: var(--primary); }
+    .upload-box input { display: none; }
+    #previewImg { max-width: 100%; max-height: 320px; margin-top: 14px; border-radius: 8px; display: none; border: 1px solid var(--border); }
+    .btn-row { display: flex; gap: 10px; margin-top: 16px; }
+    button {
+      flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 1rem;
+      font-weight: 600; cursor: pointer; transition: 0.2s;
+    }
+    #analyzeBtn { background: var(--primary); color: #fff; }
+    #analyzeBtn:hover:not(:disabled) { background: var(--primary-hover); }
+    #analyzeBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #clearBtn { background: #334155; color: var(--text); flex: 0.45; }
+    #clearBtn:hover { background: #475569; }
+    .top-result {
+      background: rgba(249, 115, 22, 0.12); border: 1px solid var(--primary);
+      padding: 14px; border-radius: 8px; margin-bottom: 16px; font-weight: 700; font-size: 1.1rem;
+    }
+    .bar-row { margin-bottom: 10px; }
+    .bar-label { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 4px; }
+    .bar-bg { background: #0f172a; height: 10px; border-radius: 6px; overflow: hidden; }
+    .bar-fill { background: var(--accent); height: 100%; width: 0%; transition: width 0.4s ease; }
+    .bar-fill.winner { background: var(--primary); }
+    label.select-label { display: block; font-size: 0.9rem; color: var(--muted); margin: 18px 0 6px; }
+    select {
+      width: 100%; padding: 10px; border-radius: 8px; background: #0f172a;
+      color: var(--text); border: 1px solid var(--border); font-size: 0.95rem;
+    }
+    .guide-box {
+      margin-top: 12px; background: #0f172a; border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px; min-height: 150px; white-space: pre-wrap; font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>Tissue Kalite Kontrol - Görsel Hata Teşhis Sistemi</h1>
+    <span id="engineStatus" class="status-badge">Görüntü işleme motoru ve 6 referans yükleniyor...</span>
+  </header>
+
+  <div class="grid">
+    <!-- Sol Panel: Fotoğraf Yükleme -->
+    <div class="card">
+      <h2>1. Test Edilecek Hatalı Kağıt Fotoğrafı</h2>
+      <label class="upload-box" for="fileInput">
+        <div>📷 Fotoğraf seçmek veya kamera ile çekmek için dokunun</div>
+        <div style="font-size: 0.82rem; color: var(--muted); margin-top: 4px;">JPG, JPEG veya PNG</div>
+        <input type="file" id="fileInput" accept="image/*" />
+        <img id="previewImg" alt="Yüklenen test fotoğrafı" />
+      </label>
+      <div class="btn-row">
+        <button id="analyzeBtn" disabled>Analiz Et</button>
+        <button id="clearBtn">Temizle</button>
+      </div>
+    </div>
+
+    <!-- Sağ Panel: Analiz ve Müdahale Rehberi -->
+    <div class="card">
+      <h2>2. Analiz ve Oran Sonuçları</h2>
+      <div id="topResult" class="top-result">Henüz analiz yapılmadı.</div>
+      <div id="barsContainer"></div>
+
+      <label class="select-label" for="defectSelect">
+        Müdahale Rehberi Görüntülenen Sorun (Farklı ihtimal için buradan seçebilirsiniz):
+      </label>
+      <select id="defectSelect"></select>
+      <div id="guideText" class="guide-box"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 6 Referans Fotoğrafı ve Müdahale Rehberi Tanımları
+  // (Not: Müdahale metinlerini kendi .txt dosyalarınızdaki metinlerle değiştirebilirsiniz)
+  const DEFECTS = [
+    {
+      id: "su_izi",
+      name: "1. Sorun (su_izi)",
+      file: "1.jpg",
+      guide: "SU İZİ MÜDAHALE REHBERİ:\n• Elek gerginliğini kontrol edin, gevşek elek su izine yol açar.\n• Vakum kutusu vakum değerlerini ve elek temizleme duşlarını gözden geçirin.\n• Hamur kıvamı ve elek suyu drenaj ayarlarını kontrol edin."
+    },
+    {
+      id: "blof",
+      name: "2. Sorun (blöf)",
+      file: "7.jpeg.jpg",
+      guide: "BLÖF MÜDAHALE REHBERİ:\n• Keçe ve Yankee silindiri arasındaki hava sıkışmasını kontrol edin.\n• Pres basıncını ve keçe geçirgenliğini (vakum/yıkama) kontrol edin.\n• Kağıt gerginliği (draw) ayarlarını dengeleyin."
+    },
+    {
+      id: "boyuna_iz",
+      name: "3. Sorun (boyuna_iz)",
+      file: "9.jpg",
+      guide: "BOYUNA İZ MÜDAHALE REHBERİ:\n• Elek, keçe ve silindir yüzeylerinde çizik, yabancı madde veya birikinti olup olmadığını kontrol edin.\n• Doktor bıçaklarının (raspa) baskısını ve temizliğini kontrol edin.\n• Duş nozullarının tıkalı olup olmadığını inceleyin."
+    },
+    {
+      id: "broke_lekesi",
+      name: "4. Sorun (broke_lekesi)",
+      file: "3.jpg",
+      guide: "BROKE LEKESİ MÜDAHALE REHBERİ:\n• Hamur hazırlama ve elek sistemindeki temizlik/eleme ünitelerini kontrol edin.\n• Broke (kopuk) oranını ve öğütme derecesini gözden geçirin.\n• Sistemdeki birikinti ve slime oluşumuna karşı hat temizliği yapın."
+    },
+    {
+      id: "erime",
+      name: "5. Sorun (erime)",
+      file: "5.jpg",
+      guide: "ERİME MÜDAHALE REHBERİ:\n• Yankee silindiri buhar basıncını ve yüzey sıcaklığını kontrol edin.\n• Kaplama (coating) kimyasalı püskürtme oranını ve nozulları inceleyin.\n• Keçe nem oranını ve pres hattı su alma kapasitesini kontrol edin."
+    },
+    {
+      id: "yigilma",
+      name: "6. Sorun (yigilma)",
+      file: "2.jpg",
+      guide: "YIGILMA MÜDAHALE REHBERİ:\n• Krepaj (creping) doktor bıçağını ve bıçak açısını kontrol edin, gerekirse bıçak değiştirin.\n• Yankee yüzey kaplaması (adhesive/release) dengesini gözden geçirin.\n• Sarıcı (reel) ve Yankee arasındaki hız farkını (çekme oranını) kontrol edin."
+    }
+  ];
+
+  let cvReady = false;
+  let refsLoaded = false;
+  const refDescriptors = {};
+  let orb, bf;
+
+  // Arayüz başlangıç ayarları
+  const defectSelect = document.getElementById("defectSelect");
+  const guideText = document.getElementById("guideText");
+  const barsContainer = document.getElementById("barsContainer");
+  const fileInput = document.getElementById("fileInput");
+  const previewImg = document.getElementById("previewImg");
+  const analyzeBtn = document.getElementById("analyzeBtn");
+  const clearBtn = document.getElementById("clearBtn");
+  const topResult = document.getElementById("topResult");
+  const engineStatus = document.getElementById("engineStatus");
+
+  DEFECTS.forEach(d => {
+    const opt = document.createElement("option");
+    opt.value = d.id;
+    opt.textContent = d.name;
+    defectSelect.appendChild(opt);
+  });
+  defectSelect.value = "yigilma";
+  guideText.textContent = DEFECTS.find(d => d.id === "yigilma").guide;
+
+  defectSelect.addEventListener("change", () => {
+    const found = DEFECTS.find(d => d.id === defectSelect.value);
+    guideText.textContent = found ? found.guide : "";
+  });
+
+  function renderBars(scoresMap) {
+    barsContainer.innerHTML = "";
+    const sorted = [...DEFECTS].sort((a, b) => (scoresMap[b.id] || 0) - (scoresMap[a.id] || 0));
+    sorted.forEach((d, idx) => {
+      const val = scoresMap[d.id] || 0;
+      const row = document.createElement("div");
+      row.className = "bar-row";
+      row.innerHTML = `
+        <div class="bar-label">
+          <span>${d.name}</span>
+          <strong>%${val.toFixed(1)}</strong>
+        </div>
+        <div class="bar-bg">
+          <div class="bar-fill ${idx === 0 && val > 0 ? "winner" : ""}" style="width: ${val}%"></div>
+        </div>
+      `;
+      barsContainer.appendChild(row);
+    });
+  }
+  renderBars({});
+
+  // Görüntüden ORB özellik noktası çıkarma (Colab'daki CLAHE + ORB mantığının birebir karşılığı)
+  function extractDescriptors(imgElement) {
+    const src = cv.imread(imgElement);
+    const resized = new cv.Mat();
+    const gray = new cv.Mat();
+    const claheOut = new cv.Mat();
+    const keypoints = new cv.KeyPointVector();
+    const descriptors = new cv.Mat();
+
+    cv.resize(src, resized, new cv.Size(500, 500), 0, 0, cv.INTER_AREA);
+    cv.cvtColor(resized, gray, cv.COLOR_RGBA2GRAY);
+
+    const clahe = new cv.CLAHE(3.0, new cv.Size(8, 8));
+    clahe.apply(gray, claheOut);
+
+    orb.detectAndCompute(claheOut, new cv.Mat(), keypoints, descriptors);
+
+    src.delete(); resized.delete(); gray.delete(); claheOut.delete(); keypoints.delete(); clahe.delete();
+    return descriptors;
+  }
+
+  function loadImageAsync(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Yüklenemedi: " + url));
+      img.src = url;
+    });
+  }
+
+  async function onOpenCvReady() {
+    cvReady = true;
+    orb = new cv.ORB(1500);
+    bf = new cv.BFMatcher(cv.NORM_HAMMING, true);
+
+    let loadedCount = 0;
+    for (const d of DEFECTS) {
+      try {
+        const img = await loadImageAsync(d.file);
+        refDescriptors[d.id] = extractDescriptors(img);
+        loadedCount++;
+      } catch (e) {
+        console.warn("Referans resmi yüklenemedi:", d.file, e);
+      }
+    }
+
+    if (loadedCount > 0) {
+      refsLoaded = true;
+      engineStatus.textContent = `Sistem Hazır (${loadedCount}/6 Referans Yüklendi)`;
+      engineStatus.classList.add("ready");
+      if (previewImg.src && previewImg.style.display === "block") {
+        analyzeBtn.disabled = false;
+      }
+    } else {
+      engineStatus.textContent = "Hata: Referans resimleri bulunamadı! Dosya adlarını kontrol edin.";
+    }
+  }
+
+  fileInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      previewImg.src = ev.target.result;
+      previewImg.style.display = "block";
+      if (refsLoaded) analyzeBtn.disabled = false;
+      topResult.textContent = "Fotoğraf yüklendi. 'Analiz Et' butonuna basın.";
+    };
+    reader.readAsDataURL(file);
+  });
+
+  clearBtn.addEventListener("click", () => {
+    fileInput.value = "";
+    previewImg.src = "";
+    previewImg.style.display = "none";
+    analyzeBtn.disabled = true;
+    topResult.textContent = "Henüz analiz yapılmadı.";
+    renderBars({});
+  });
+
+  analyzeBtn.addEventListener("click", () => {
+    if (!refsLoaded || !previewImg.src) return;
+
+    const testDesc = extractDescriptors(previewImg);
+    if (!testDesc || testDesc.rows === 0) {
+      topResult.textContent = "Fotoğrafta belirgin bir hata izi tespit edilemedi.";
+      if (testDesc) testDesc.delete();
+      return;
+    }
+
+    const rawScores = {};
+    let totalScore = 0;
+
+    for (const d of DEFECTS) {
+      const refDesc = refDescriptors[d.id];
+      if (!refDesc || refDesc.rows === 0) {
+        rawScores[d.id] = 0;
+        continue;
+      }
+
+      const matches = new cv.DMatchVector();
+      bf.match(refDesc, testDesc, matches);
+
+      const dists = [];
+      for (let i = 0; i < matches.size(); i++) {
+        dists.push(matches.get(i).distance);
+      }
+      matches.delete();
+
+      dists.sort((a, b) => a - b);
+      const top40 = dists.slice(0, 40);
+      if (top40.length === 0) {
+        rawScores[d.id] = 0;
+        continue;
+      }
+
+      const avgDist = top40.reduce((sum, v) => sum + v, 0) / top40.length;
+      const similarity = Math.max(1, 100 - avgDist);
+      const score = Math.pow(similarity, 3);
+      rawScores[d.id] = score;
+      totalScore += score;
+    }
+
+    testDesc.delete();
+
+    if (totalScore === 0) {
+      topResult.textContent = "Eşleşme hesaplanamadı.";
+      return;
+    }
+
+    const percentages = {};
+    let winner = DEFECTS[0];
+    let maxPct = -1;
+
+    for (const d of DEFECTS) {
+      const pct = (rawScores[d.id] / totalScore) * 100;
+      percentages[d.id] = pct;
+      if (pct > maxPct) {
+        maxPct = pct;
+        winner = d;
+      }
+    }
+
+    topResult.textContent = `TESPİT EDİLEN SORUN: ${winner.name} (%${maxPct.toFixed(1)})`;
+    renderBars(percentages);
+    defectSelect.value = winner.id;
+    guideText.textContent = winner.guide;
+  });
+</script>
+</body>
+</html>
