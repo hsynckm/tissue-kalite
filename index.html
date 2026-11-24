@@ -44,8 +44,7 @@
       font-weight: 600; cursor: pointer; transition: 0.2s;
     }
     #analyzeBtn { background: var(--primary); color: #fff; }
-    #analyzeBtn:hover:not(:disabled) { background: var(--primary-hover); }
-    #analyzeBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+    #analyzeBtn:hover { background: var(--primary-hover); }
     #clearBtn { background: #334155; color: var(--text); flex: 0.45; }
     #clearBtn:hover { background: #475569; }
     .top-result {
@@ -85,7 +84,7 @@
         <img id="previewImg" alt="Yüklenen test fotoğrafı" />
       </label>
       <div class="btn-row">
-        <button id="analyzeBtn" type="button" disabled>Analiz Et</button>
+        <button id="analyzeBtn" type="button">Analiz Et</button>
         <button id="clearBtn" type="button">Temizle</button>
       </div>
     </div>
@@ -145,7 +144,7 @@
   ];
 
   const refFeatures = {};
-  let refsLoaded = false;
+  let imageReady = false;
 
   const defectSelect = document.getElementById("defectSelect");
   const guideText = document.getElementById("guideText");
@@ -192,7 +191,6 @@
   }
   renderBars({});
 
-  // Dış kütüphane gerektirmeyen yerleşik Doku, Kontrast, Kenar Yönü (Yatay/Dikey) ve Leke Analiz Motoru
   function extractSignature(imgEl) {
     const size = 128;
     const canvas = document.createElement("canvas");
@@ -212,13 +210,11 @@
       if (g > maxVal) maxVal = g;
     }
 
-    // Işık farklarını ortadan kaldırmak için kontrast normalizasyonu
     const range = Math.max(1, maxVal - minVal);
     for (let i = 0; i < gray.length; i++) {
       gray[i] = ((gray[i] - minVal) / range) * 255;
     }
 
-    // 1. Parlaklık Histogramı (16 dilim)
     const hist = new Float32Array(16);
     for (let i = 0; i < gray.length; i++) {
       const bin = Math.min(15, Math.floor(gray[i] / 16));
@@ -226,7 +222,6 @@
     }
     for (let i = 0; i < 16; i++) hist[i] /= gray.length;
 
-    // 2. Yatay ve Dikey Kenar/Çizgi Enerjisi + 8x8 Bölgesel Doku İmzası
     let gxTotal = 0, gyTotal = 0;
     const grid = new Float32Array(64);
     for (let y = 1; y < size - 1; y++) {
@@ -263,34 +258,41 @@
     return Math.pow(similarity, 3);
   }
 
-  function loadImageAsync(url) {
+  function loadImageSingle(url, useCors) {
     return new Promise((resolve, reject) => {
       const img = new Image();
+      if (useCors) img.crossOrigin = "anonymous";
       img.onload = () => resolve(img);
       img.onerror = () => reject(new Error("Yüklenemedi: " + url));
-      img.src = url + "?v=" + Date.now();
+      img.src = url;
     });
+  }
+
+  async function loadRefImage(fileName) {
+    try {
+      return await loadImageSingle("./" + fileName, false);
+    } catch (e1) {
+      return await loadImageSingle("https://raw.githubusercontent.com/hsynckm/tissue-kalite/main/" + fileName, true);
+    }
   }
 
   async function initRefs() {
     let loadedCount = 0;
     for (const d of DEFECTS) {
       try {
-        const img = await loadImageAsync(d.file);
+        const img = await loadRefImage(d.file);
         refFeatures[d.id] = extractSignature(img);
         loadedCount++;
       } catch (e) {
-        console.warn("Referans yüklenemedi:", d.file, e);
+        console.warn("Referans yüklenemedi:", d.file);
       }
     }
 
     if (loadedCount > 0) {
-      refsLoaded = true;
       engineStatus.textContent = `Sistem Hazır (${loadedCount}/6 Referans Yüklendi)`;
       engineStatus.classList.add("ready");
-      if (previewImg.getAttribute("src")) analyzeBtn.disabled = false;
     } else {
-      engineStatus.textContent = "Hata: Referans resimleri bulunamadı!";
+      engineStatus.textContent = "Uyarı: Referans resimleri yüklenemedi, dosya yolunu kontrol edin.";
     }
   }
 
@@ -301,7 +303,7 @@
     reader.onload = (ev) => {
       previewImg.onload = () => {
         previewImg.style.display = "block";
-        analyzeBtn.disabled = !refsLoaded;
+        imageReady = true;
         topResult.textContent = "Fotoğraf yüklendi. 'Analiz Et' butonuna basın.";
       };
       previewImg.src = ev.target.result;
@@ -313,13 +315,25 @@
     fileInput.value = "";
     previewImg.removeAttribute("src");
     previewImg.style.display = "none";
-    analyzeBtn.disabled = true;
+    imageReady = false;
     topResult.textContent = "Henüz analiz yapılmadı.";
     renderBars({});
   });
 
-  analyzeBtn.addEventListener("click", () => {
-    if (!refsLoaded || !previewImg.getAttribute("src")) return;
+  analyzeBtn.addEventListener("click", async () => {
+    if (!imageReady) {
+      topResult.textContent = "Lütfen önce sol taraftan bir fotoğraf seçin.";
+      return;
+    }
+
+    if (Object.keys(refFeatures).length === 0) {
+      await initRefs();
+    }
+
+    if (Object.keys(refFeatures).length === 0) {
+      topResult.textContent = "Hata: Referans fotoğraflara erişilemedi.";
+      return;
+    }
 
     const testSig = extractSignature(previewImg);
     const rawScores = {};
