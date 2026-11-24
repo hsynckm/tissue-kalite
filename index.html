@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tissue Kalite Kontrol - Görsel Hata Teşhis ve Müdahale Rehberi</title>
-  <script async src="https://docs.opencv.org/4.8.0/opencv.js" onload="onOpenCvReady();"></script>
   <style>
     :root {
       --bg: #0f172a;
@@ -34,10 +33,11 @@
     .upload-box {
       border: 2px dashed var(--border); border-radius: 10px; padding: 24px;
       text-align: center; cursor: pointer; transition: 0.2s; background: rgba(15, 23, 42, 0.5);
+      display: block;
     }
     .upload-box:hover { border-color: var(--primary); }
     .upload-box input { display: none; }
-    #previewImg { max-width: 100%; max-height: 320px; margin-top: 14px; border-radius: 8px; display: none; border: 1px solid var(--border); }
+    #previewImg { max-width: 100%; max-height: 320px; margin: 14px auto 0; border-radius: 8px; display: none; border: 1px solid var(--border); }
     .btn-row { display: flex; gap: 10px; margin-top: 16px; }
     button {
       flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 1rem;
@@ -45,7 +45,7 @@
     }
     #analyzeBtn { background: var(--primary); color: #fff; }
     #analyzeBtn:hover:not(:disabled) { background: var(--primary-hover); }
-    #analyzeBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+    #analyzeBtn:disabled { opacity: 0.45; cursor: not-allowed; }
     #clearBtn { background: #334155; color: var(--text); flex: 0.45; }
     #clearBtn:hover { background: #475569; }
     .top-result {
@@ -72,11 +72,10 @@
 <div class="container">
   <header>
     <h1>Tissue Kalite Kontrol - Görsel Hata Teşhis Sistemi</h1>
-    <span id="engineStatus" class="status-badge">Görüntü işleme motoru ve 6 referans yükleniyor...</span>
+    <span id="engineStatus" class="status-badge">Referans fotoğraflar yükleniyor...</span>
   </header>
 
   <div class="grid">
-    <!-- Sol Panel: Fotoğraf Yükleme -->
     <div class="card">
       <h2>1. Test Edilecek Hatalı Kağıt Fotoğrafı</h2>
       <label class="upload-box" for="fileInput">
@@ -86,12 +85,11 @@
         <img id="previewImg" alt="Yüklenen test fotoğrafı" />
       </label>
       <div class="btn-row">
-        <button id="analyzeBtn" disabled>Analiz Et</button>
-        <button id="clearBtn">Temizle</button>
+        <button id="analyzeBtn" type="button" disabled>Analiz Et</button>
+        <button id="clearBtn" type="button">Temizle</button>
       </div>
     </div>
 
-    <!-- Sağ Panel: Analiz ve Müdahale Rehberi -->
     <div class="card">
       <h2>2. Analiz ve Oran Sonuçları</h2>
       <div id="topResult" class="top-result">Henüz analiz yapılmadı.</div>
@@ -107,8 +105,6 @@
 </div>
 
 <script>
-  // 6 Referans Fotoğrafı ve Müdahale Rehberi Tanımları
-  // (Not: Müdahale metinlerini kendi .txt dosyalarınızdaki metinlerle değiştirebilirsiniz)
   const DEFECTS = [
     {
       id: "su_izi",
@@ -148,12 +144,9 @@
     }
   ];
 
-  let cvReady = false;
+  const refFeatures = {};
   let refsLoaded = false;
-  const refDescriptors = {};
-  let orb, bf;
 
-  // Arayüz başlangıç ayarları
   const defectSelect = document.getElementById("defectSelect");
   const guideText = document.getElementById("guideText");
   const barsContainer = document.getElementById("barsContainer");
@@ -199,50 +192,95 @@
   }
   renderBars({});
 
-  // Görüntüden ORB özellik noktası çıkarma (Colab'daki CLAHE + ORB mantığının birebir karşılığı)
-  function extractDescriptors(imgElement) {
-    const src = cv.imread(imgElement);
-    const resized = new cv.Mat();
-    const gray = new cv.Mat();
-    const claheOut = new cv.Mat();
-    const keypoints = new cv.KeyPointVector();
-    const descriptors = new cv.Mat();
+  // Dış kütüphane gerektirmeyen yerleşik Doku, Kontrast, Kenar Yönü (Yatay/Dikey) ve Leke Analiz Motoru
+  function extractSignature(imgEl) {
+    const size = 128;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(imgEl, 0, 0, size, size);
+    const data = ctx.getImageData(0, 0, size, size).data;
 
-    cv.resize(src, resized, new cv.Size(500, 500), 0, 0, cv.INTER_AREA);
-    cv.cvtColor(resized, gray, cv.COLOR_RGBA2GRAY);
+    const gray = new Float32Array(size * size);
+    let minVal = 255, maxVal = 0;
 
-    const clahe = new cv.CLAHE(3.0, new cv.Size(8, 8));
-    clahe.apply(gray, claheOut);
+    for (let i = 0; i < size * size; i++) {
+      const g = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2];
+      gray[i] = g;
+      if (g < minVal) minVal = g;
+      if (g > maxVal) maxVal = g;
+    }
 
-    orb.detectAndCompute(claheOut, new cv.Mat(), keypoints, descriptors);
+    // Işık farklarını ortadan kaldırmak için kontrast normalizasyonu
+    const range = Math.max(1, maxVal - minVal);
+    for (let i = 0; i < gray.length; i++) {
+      gray[i] = ((gray[i] - minVal) / range) * 255;
+    }
 
-    src.delete(); resized.delete(); gray.delete(); claheOut.delete(); keypoints.delete(); clahe.delete();
-    return descriptors;
+    // 1. Parlaklık Histogramı (16 dilim)
+    const hist = new Float32Array(16);
+    for (let i = 0; i < gray.length; i++) {
+      const bin = Math.min(15, Math.floor(gray[i] / 16));
+      hist[bin]++;
+    }
+    for (let i = 0; i < 16; i++) hist[i] /= gray.length;
+
+    // 2. Yatay ve Dikey Kenar/Çizgi Enerjisi + 8x8 Bölgesel Doku İmzası
+    let gxTotal = 0, gyTotal = 0;
+    const grid = new Float32Array(64);
+    for (let y = 1; y < size - 1; y++) {
+      for (let x = 1; x < size - 1; x++) {
+        const idx = y * size + x;
+        const gx = Math.abs(gray[idx + 1] - gray[idx - 1]);
+        const gy = Math.abs(gray[idx + size] - gray[idx - size]);
+        gxTotal += gx;
+        gyTotal += gy;
+        const cell = Math.floor(y / 16) * 8 + Math.floor(x / 16);
+        grid[cell] += (gx + gy) / 510;
+      }
+    }
+    for (let i = 0; i < 64; i++) grid[i] /= 256;
+    const edgeRatio = gxTotal / Math.max(1, gxTotal + gyTotal);
+    const edgeDensity = (gxTotal + gyTotal) / (size * size * 255);
+
+    return { hist, grid, edgeRatio, edgeDensity };
+  }
+
+  function compareSignatures(a, b) {
+    let histDist = 0;
+    for (let i = 0; i < 16; i++) histDist += Math.abs(a.hist[i] - b.hist[i]);
+
+    let gridDist = 0;
+    for (let i = 0; i < 64; i++) gridDist += Math.abs(a.grid[i] - b.grid[i]);
+    gridDist /= 64;
+
+    const dirDist = Math.abs(a.edgeRatio - b.edgeRatio);
+    const densDist = Math.abs(a.edgeDensity - b.edgeDensity);
+
+    const totalDist = histDist * 0.35 + gridDist * 1.4 + dirDist * 0.9 + densDist * 0.8;
+    const similarity = Math.max(0.01, 1 / (1 + totalDist * 4));
+    return Math.pow(similarity, 3);
   }
 
   function loadImageAsync(url) {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.crossOrigin = "anonymous";
       img.onload = () => resolve(img);
       img.onerror = () => reject(new Error("Yüklenemedi: " + url));
-      img.src = url;
+      img.src = url + "?v=" + Date.now();
     });
   }
 
-  async function onOpenCvReady() {
-    cvReady = true;
-    orb = new cv.ORB(1500);
-    bf = new cv.BFMatcher(cv.NORM_HAMMING, true);
-
+  async function initRefs() {
     let loadedCount = 0;
     for (const d of DEFECTS) {
       try {
         const img = await loadImageAsync(d.file);
-        refDescriptors[d.id] = extractDescriptors(img);
+        refFeatures[d.id] = extractSignature(img);
         loadedCount++;
       } catch (e) {
-        console.warn("Referans resmi yüklenemedi:", d.file, e);
+        console.warn("Referans yüklenemedi:", d.file, e);
       }
     }
 
@@ -250,11 +288,9 @@
       refsLoaded = true;
       engineStatus.textContent = `Sistem Hazır (${loadedCount}/6 Referans Yüklendi)`;
       engineStatus.classList.add("ready");
-      if (previewImg.src && previewImg.style.display === "block") {
-        analyzeBtn.disabled = false;
-      }
+      if (previewImg.getAttribute("src")) analyzeBtn.disabled = false;
     } else {
-      engineStatus.textContent = "Hata: Referans resimleri bulunamadı! Dosya adlarını kontrol edin.";
+      engineStatus.textContent = "Hata: Referans resimleri bulunamadı!";
     }
   }
 
@@ -263,17 +299,19 @@
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
+      previewImg.onload = () => {
+        previewImg.style.display = "block";
+        analyzeBtn.disabled = !refsLoaded;
+        topResult.textContent = "Fotoğraf yüklendi. 'Analiz Et' butonuna basın.";
+      };
       previewImg.src = ev.target.result;
-      previewImg.style.display = "block";
-      if (refsLoaded) analyzeBtn.disabled = false;
-      topResult.textContent = "Fotoğraf yüklendi. 'Analiz Et' butonuna basın.";
     };
     reader.readAsDataURL(file);
   });
 
   clearBtn.addEventListener("click", () => {
     fileInput.value = "";
-    previewImg.src = "";
+    previewImg.removeAttribute("src");
     previewImg.style.display = "none";
     analyzeBtn.disabled = true;
     topResult.textContent = "Henüz analiz yapılmadı.";
@@ -281,53 +319,21 @@
   });
 
   analyzeBtn.addEventListener("click", () => {
-    if (!refsLoaded || !previewImg.src) return;
+    if (!refsLoaded || !previewImg.getAttribute("src")) return;
 
-    const testDesc = extractDescriptors(previewImg);
-    if (!testDesc || testDesc.rows === 0) {
-      topResult.textContent = "Fotoğrafta belirgin bir hata izi tespit edilemedi.";
-      if (testDesc) testDesc.delete();
-      return;
-    }
-
+    const testSig = extractSignature(previewImg);
     const rawScores = {};
     let totalScore = 0;
 
     for (const d of DEFECTS) {
-      const refDesc = refDescriptors[d.id];
-      if (!refDesc || refDesc.rows === 0) {
+      const refSig = refFeatures[d.id];
+      if (!refSig) {
         rawScores[d.id] = 0;
         continue;
       }
-
-      const matches = new cv.DMatchVector();
-      bf.match(refDesc, testDesc, matches);
-
-      const dists = [];
-      for (let i = 0; i < matches.size(); i++) {
-        dists.push(matches.get(i).distance);
-      }
-      matches.delete();
-
-      dists.sort((a, b) => a - b);
-      const top40 = dists.slice(0, 40);
-      if (top40.length === 0) {
-        rawScores[d.id] = 0;
-        continue;
-      }
-
-      const avgDist = top40.reduce((sum, v) => sum + v, 0) / top40.length;
-      const similarity = Math.max(1, 100 - avgDist);
-      const score = Math.pow(similarity, 3);
-      rawScores[d.id] = score;
-      totalScore += score;
-    }
-
-    testDesc.delete();
-
-    if (totalScore === 0) {
-      topResult.textContent = "Eşleşme hesaplanamadı.";
-      return;
+      const s = compareSignatures(refSig, testSig);
+      rawScores[d.id] = s;
+      totalScore += s;
     }
 
     const percentages = {};
@@ -348,6 +354,8 @@
     defectSelect.value = winner.id;
     guideText.textContent = winner.guide;
   });
+
+  window.addEventListener("DOMContentLoaded", initRefs);
 </script>
 </body>
 </html>
