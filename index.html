@@ -17,10 +17,10 @@
       --accent: #38bdf8;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background: var(--bg); color: var(--text); padding: 20px; line-height: 1.5; }
-    .container { max-width: 1100px; margin: 0 auto; }
-    header { text-align: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
-    header h1 { font-size: 1.6rem; margin-bottom: 8px; }
+    body { background: var(--bg); color: var(--text); padding: 16px; line-height: 1.5; }
+    .container { max-width: 1120px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+    header h1 { font-size: 1.5rem; margin-bottom: 6px; }
     .status-badge {
       display: inline-block; padding: 4px 12px; border-radius: 999px;
       font-size: 0.85rem; background: #334155; color: #fbbf24; font-weight: 600;
@@ -28,56 +28,65 @@
     .status-badge.ready { background: rgba(34, 197, 94, 0.15); color: var(--success); }
     .ai-bar {
       background: var(--card); border: 1px solid var(--border); border-radius: 10px;
-      padding: 12px 16px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+      padding: 10px 14px; margin-bottom: 18px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
     }
-    .ai-bar label { font-size: 0.88rem; color: var(--accent); font-weight: 600; }
+    .ai-bar label { font-size: 0.85rem; color: var(--accent); font-weight: 600; }
     .ai-bar input {
-      flex: 1; min-width: 220px; padding: 8px 12px; border-radius: 6px;
-      background: #0f172a; border: 1px solid var(--border); color: var(--text); font-size: 0.88rem;
+      flex: 1; min-width: 200px; padding: 7px 10px; border-radius: 6px;
+      background: #0f172a; border: 1px solid var(--border); color: var(--text); font-size: 0.85rem;
     }
-    .ai-bar small { color: var(--muted); font-size: 0.8rem; width: 100%; }
-    .grid { display: grid; grid-template-columns: 1fr 1.15fr; gap: 20px; }
-    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
-    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
-    .card h2 { font-size: 1.05rem; color: var(--accent); margin-bottom: 14px; }
-    .upload-box {
-      border: 2px dashed var(--border); border-radius: 10px; padding: 24px;
-      text-align: center; cursor: pointer; transition: 0.2s; background: rgba(15, 23, 42, 0.5);
-      display: block;
+    .grid { display: grid; grid-template-columns: 1fr 1.15fr; gap: 18px; }
+    @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+    .card h2 { font-size: 1.02rem; color: var(--accent); margin-bottom: 10px; }
+    .upload-btn {
+      display: block; border: 2px dashed var(--border); border-radius: 10px; padding: 16px;
+      text-align: center; cursor: pointer; background: rgba(15, 23, 42, 0.5); transition: 0.2s;
     }
-    .upload-box:hover { border-color: var(--primary); }
-    .upload-box input { display: none; }
-    #previewImg { max-width: 100%; max-height: 320px; margin: 14px auto 0; border-radius: 8px; display: none; border: 1px solid var(--border); }
-    .btn-row { display: flex; gap: 10px; margin-top: 16px; }
+    .upload-btn:hover { border-color: var(--primary); }
+    .upload-btn input { display: none; }
+    .crop-hint {
+      display: none; margin-top: 10px; font-size: 0.84rem; color: #fde047;
+      background: rgba(234, 179, 8, 0.12); border: 1px solid rgba(234, 179, 8, 0.35);
+      padding: 8px 10px; border-radius: 8px;
+    }
+    .canvas-wrap {
+      margin-top: 12px; text-align: center; position: relative; display: none;
+      background: #090d16; border-radius: 8px; padding: 6px; border: 1px solid var(--border);
+    }
+    #cropCanvas {
+      max-width: 100%; max-height: 360px; cursor: crosshair; touch-action: none; border-radius: 6px; display: inline-block;
+    }
+    .btn-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
     button {
-      flex: 1; padding: 12px; border: none; border-radius: 8px; font-size: 1rem;
+      flex: 1; padding: 11px; border: none; border-radius: 8px; font-size: 0.95rem;
       font-weight: 600; cursor: pointer; transition: 0.2s;
     }
-    #analyzeBtn { background: var(--primary); color: #fff; }
+    #analyzeBtn { background: var(--primary); color: #fff; min-width: 140px; }
     #analyzeBtn:hover { background: var(--primary-hover); }
+    #resetSelectionBtn { background: #0284c7; color: #fff; flex: 0.6; display: none; }
     #clearBtn { background: #334155; color: var(--text); flex: 0.45; }
-    #clearBtn:hover { background: #475569; }
     .top-result {
       background: rgba(249, 115, 22, 0.12); border: 1px solid var(--primary);
-      padding: 14px; border-radius: 8px; margin-bottom: 12px; font-weight: 700; font-size: 1.05rem;
+      padding: 13px; border-radius: 8px; margin-bottom: 12px; font-weight: 700; font-size: 1.05rem;
     }
     .ai-note {
       background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.35);
-      padding: 10px 12px; border-radius: 8px; margin-bottom: 14px; font-size: 0.88rem; color: #e0f2fe; display: none;
+      padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 0.88rem; color: #e0f2fe; display: none;
     }
-    .bar-row { margin-bottom: 10px; }
-    .bar-label { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 4px; }
-    .bar-bg { background: #0f172a; height: 10px; border-radius: 6px; overflow: hidden; }
-    .bar-fill { background: var(--accent); height: 100%; width: 0%; transition: width 0.4s ease; }
+    .bar-row { margin-bottom: 9px; }
+    .bar-label { display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 3px; }
+    .bar-bg { background: #0f172a; height: 9px; border-radius: 6px; overflow: hidden; }
+    .bar-fill { background: var(--accent); height: 100%; width: 0%; transition: width 0.35s ease; }
     .bar-fill.winner { background: var(--primary); }
-    label.select-label { display: block; font-size: 0.9rem; color: var(--muted); margin: 18px 0 6px; }
+    label.select-label { display: block; font-size: 0.88rem; color: var(--muted); margin: 16px 0 6px; }
     select {
       width: 100%; padding: 10px; border-radius: 8px; background: #0f172a;
-      color: var(--text); border: 1px solid var(--border); font-size: 0.95rem;
+      color: var(--text); border: 1px solid var(--border); font-size: 0.94rem;
     }
     .guide-box {
-      margin-top: 12px; background: #0f172a; border: 1px solid var(--border);
-      border-radius: 8px; padding: 14px; min-height: 150px; white-space: pre-wrap; font-size: 0.95rem;
+      margin-top: 10px; background: #0f172a; border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px; min-height: 150px; white-space: pre-wrap; font-size: 0.94rem;
     }
   </style>
 </head>
@@ -88,24 +97,30 @@
     <span id="engineStatus" class="status-badge">Referans fotoğraflar ve rehberler yükleniyor...</span>
   </header>
 
-  <!-- Opsiyonel Gerçek Yapay Zeka (Gemini Vision) Ayarı -->
   <div class="ai-bar">
-    <label for="apiKeyInput">🤖 Yapay Zeka Modu (İsteğe Bağlı Gemini API Key):</label>
-    <input type="password" id="apiKeyInput" placeholder="AIzaSy... (Boş bırakılırsa gelişmiş yerel motor çalışır)" />
-    <small>aistudio.google.com adresinden alınan ücretsiz anahtarı girerseniz görüntüler doğrudan Gemini Yapay Zeka ile analiz edilir.</small>
+    <label for="apiKeyInput">🤖 Yapay Zeka Modu (Gemini API Key):</label>
+    <input type="password" id="apiKeyInput" placeholder="AIzaSy... (Girilirse gerçek Yapay Zeka devreye girer)" />
   </div>
 
   <div class="grid">
     <div class="card">
       <h2>1. Test Edilecek Hatalı Kağıt Fotoğrafı</h2>
-      <label class="upload-box" for="fileInput">
+      <label class="upload-btn" for="fileInput">
         <div>📷 Fotoğraf seçmek veya kamera ile çekmek için dokunun</div>
-        <div style="font-size: 0.82rem; color: var(--muted); margin-top: 4px;">JPG, JPEG veya PNG</div>
         <input type="file" id="fileInput" accept="image/*" />
-        <img id="previewImg" alt="Yüklenen test fotoğrafı" />
       </label>
+
+      <div id="cropHint" class="crop-hint">
+        🎯 <b>İpucu:</b> Parmağınızla veya fareyle sürükleyerek <b>sadece hatanın olduğu bölgeyi</b> seçim içine alın; arka plan gürültüsü elenir!
+      </div>
+
+      <div id="canvasWrap" class="canvas-wrap">
+        <canvas id="cropCanvas"></canvas>
+      </div>
+
       <div class="btn-row">
         <button id="analyzeBtn" type="button">Analiz Et</button>
+        <button id="resetSelectionBtn" type="button">Seçimi Sıfırla</button>
         <button id="clearBtn" type="button">Temizle</button>
       </div>
     </div>
@@ -117,7 +132,7 @@
       <div id="barsContainer"></div>
 
       <label class="select-label" for="defectSelect">
-        Müdahale Rehberi Görüntülenen Sorun (Farklı ihtimal için buradan seçebilirsiniz):
+        Müdahale Rehberi Görüntülenen Sorun:
       </label>
       <select id="defectSelect"></select>
       <div id="guideText" class="guide-box">Rehber yükleniyor...</div>
@@ -126,6 +141,8 @@
 </div>
 
 <script>
+  const EMBEDDED_API_KEY = ""; // İsterseniz aldığınız Gemini API anahtarını bu tırnakların içine yapıştırabilirsiniz.
+
   const DEFECTS = [
     { id: "su_izi", name: "1. Sorun (su_izi)", prefix: "su_izi", baseFiles: ["1.jpg"], txtFiles: ["su_izi.txt"], guide: "su_izi.txt dosyası bulunamadı." },
     { id: "blof", name: "2. Sorun (blöf)", prefix: "blof", baseFiles: ["7.jpeg.jpg"], txtFiles: ["blof.txt", "blöf.txt"], guide: "blof.txt dosyası bulunamadı." },
@@ -135,26 +152,32 @@
     { id: "yigilma", name: "6. Sorun (yigilma)", prefix: "yigilma", baseFiles: ["2.jpg"], txtFiles: ["yigilma.txt", "yığılma.txt"], guide: "yigilma.txt dosyası bulunamadı." }
   ];
 
-  // Her sorun için: [{ sig, base64 }]
   const refStore = {};
-  let imageReady = false;
-  let currentTestBase64 = "";
+  let loadedTestImg = null;
+  let selection = null; // { x, y, w, h } canvas koordinatlarında
+  let isDragging = false;
+  let dragStart = null;
 
   const defectSelect = document.getElementById("defectSelect");
   const guideText = document.getElementById("guideText");
   const barsContainer = document.getElementById("barsContainer");
   const fileInput = document.getElementById("fileInput");
-  const previewImg = document.getElementById("previewImg");
+  const cropCanvas = document.getElementById("cropCanvas");
+  const cropCtx = cropCanvas.getContext("2d");
+  const canvasWrap = document.getElementById("canvasWrap");
+  const cropHint = document.getElementById("cropHint");
   const analyzeBtn = document.getElementById("analyzeBtn");
+  const resetSelectionBtn = document.getElementById("resetSelectionBtn");
   const clearBtn = document.getElementById("clearBtn");
   const topResult = document.getElementById("topResult");
   const aiReasonBox = document.getElementById("aiReasonBox");
   const engineStatus = document.getElementById("engineStatus");
   const apiKeyInput = document.getElementById("apiKeyInput");
 
-  // Kayıtlı API anahtarı varsa hatırla
   const savedKey = localStorage.getItem("gemini_tissue_api_key");
   if (savedKey) apiKeyInput.value = savedKey;
+  else if (EMBEDDED_API_KEY) apiKeyInput.value = EMBEDDED_API_KEY;
+
   apiKeyInput.addEventListener("input", () => {
     localStorage.setItem("gemini_tissue_api_key", apiKeyInput.value.trim());
   });
@@ -203,7 +226,185 @@
   }
   renderBars({});
 
-  // Tarayıcı güvenlik kilidine (Tainted Canvas) takılmadan görüntüyü Blob -> DataURL olarak yükle
+  // Canvas üzerinde hata bölgesini çizme (Daire / Odak Kutusu)
+  function redrawCanvas() {
+    if (!loadedTestImg) return;
+    cropCtx.clearRect(0, 0, cropCanvas.width, cropCanvas.height);
+    cropCtx.drawImage(loadedTestImg, 0, 0, cropCanvas.width, cropCanvas.height);
+
+    if (selection && selection.w > 8 && selection.h > 8) {
+      cropCtx.fillStyle = "rgba(15, 23, 42, 0.58)";
+      cropCtx.fillRect(0, 0, cropCanvas.width, cropCanvas.height);
+
+      // Seçilen alanı net göster
+      cropCtx.save();
+      cropCtx.beginPath();
+      const cx = selection.x + selection.w / 2;
+      const cy = selection.y + selection.h / 2;
+      cropCtx.ellipse(cx, cy, selection.w / 2, selection.h / 2, 0, 0, Math.PI * 2);
+      cropCtx.clip();
+      cropCtx.drawImage(loadedTestImg, 0, 0, cropCanvas.width, cropCanvas.height);
+      cropCtx.restore();
+
+      // Turuncu odak halkası çiz
+      cropCtx.strokeStyle = "#f97316";
+      cropCtx.lineWidth = 3;
+      cropCtx.beginPath();
+      cropCtx.ellipse(cx, cy, selection.w / 2, selection.h / 2, 0, 0, Math.PI * 2);
+      cropCtx.stroke();
+    }
+  }
+
+  function getPointerPos(evt) {
+    const rect = cropCanvas.getBoundingClientRect();
+    const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+    const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+    return {
+      x: ((clientX - rect.left) / rect.width) * cropCanvas.width,
+      y: ((clientY - rect.top) / rect.height) * cropCanvas.height
+    };
+  }
+
+  function startSelect(e) {
+    if (!loadedTestImg) return;
+    isDragging = true;
+    dragStart = getPointerPos(e);
+    selection = { x: dragStart.x, y: dragStart.y, w: 0, h: 0 };
+  }
+
+  function moveSelect(e) {
+    if (!isDragging || !dragStart) return;
+    e.preventDefault();
+    const pos = getPointerPos(e);
+    selection = {
+      x: Math.min(dragStart.x, pos.x),
+      y: Math.min(dragStart.y, pos.y),
+      w: Math.abs(pos.x - dragStart.x),
+      h: Math.abs(pos.y - dragStart.y)
+    };
+    redrawCanvas();
+  }
+
+  function endSelect() {
+    if (!isDragging) return;
+    isDragging = false;
+    if (selection && selection.w > 10 && selection.h > 10) {
+      resetSelectionBtn.style.display = "inline-block";
+      topResult.textContent = "Hata bölgesi işaretlendi! Şimdi 'Analiz Et' butonuna basın.";
+    } else {
+      selection = null;
+      redrawCanvas();
+    }
+  }
+
+  cropCanvas.addEventListener("mousedown", startSelect);
+  window.addEventListener("mousemove", moveSelect);
+  window.addEventListener("mouseup", endSelect);
+  cropCanvas.addEventListener("touchstart", startSelect, { passive: false });
+  cropCanvas.addEventListener("touchmove", moveSelect, { passive: false });
+  cropCanvas.addEventListener("touchend", endSelect);
+
+  resetSelectionBtn.addEventListener("click", () => {
+    selection = null;
+    resetSelectionBtn.style.display = "none";
+    redrawCanvas();
+  });
+
+  // Seçili alanı (veya seçim yoksa tüm resmi) kırpılmış kaynak olarak üret
+  function getCroppedSource() {
+    const out = document.createElement("canvas");
+    const ctx = out.getContext("2d");
+
+    if (selection && selection.w > 10 && selection.h > 10) {
+      const scaleX = loadedTestImg.naturalWidth / cropCanvas.width;
+      const scaleY = loadedTestImg.naturalHeight / cropCanvas.height;
+      const sx = Math.max(0, selection.x * scaleX);
+      const sy = Math.max(0, selection.y * scaleY);
+      const sw = Math.min(loadedTestImg.naturalWidth - sx, selection.w * scaleX);
+      const sh = Math.min(loadedTestImg.naturalHeight - sy, selection.h * scaleY);
+      out.width = Math.max(32, Math.round(sw));
+      out.height = Math.max(32, Math.round(sh));
+      ctx.drawImage(loadedTestImg, sx, sy, sw, sh, 0, 0, out.width, out.height);
+    } else {
+      out.width = loadedTestImg.naturalWidth;
+      out.height = loadedTestImg.naturalHeight;
+      ctx.drawImage(loadedTestImg, 0, 0);
+    }
+    return { canvas: out, dataUrl: out.toDataURL("image/jpeg", 0.92) };
+  }
+
+  // Konumdan Bağımsız (Shift-Invariant) Doku, Krepaj Sıklığı ve Yön Analiz Motoru
+  function extractTextureSignature(imgSource) {
+    const size = 96;
+    const canvas = document.createElement("canvas");
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(imgSource, 0, 0, size, size);
+    const data = ctx.getImageData(0, 0, size, size).data;
+
+    const gray = new Float32Array(size * size);
+    let sum = 0;
+    for (let i = 0; i < size * size; i++) {
+      const g = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2];
+      gray[i] = g;
+      sum += g;
+    }
+
+    const mean = sum / gray.length;
+    let sqSum = 0;
+    for (let i = 0; i < gray.length; i++) sqSum += Math.pow(gray[i] - mean, 2);
+    const std = Math.max(1, Math.sqrt(sqSum / gray.length));
+
+    const norm = new Float32Array(gray.length);
+    for (let i = 0; i < gray.length; i++) norm[i] = (gray[i] - mean) / std;
+
+    // 1. Konumdan bağımsız: Koyu lekeler / gölgeler vs parlak kabarcıklar dağılımı (12 Z-score dilimi)
+    const zHist = new Float32Array(12);
+    for (let i = 0; i < norm.length; i++) {
+      const clamped = Math.max(-2.99, Math.min(2.99, norm[i]));
+      const bin = Math.floor((clamped + 3) * 2);
+      zHist[bin]++;
+    }
+    for (let i = 0; i < 12; i++) zHist[i] /= norm.length;
+
+    // 2. Mikro-Doku ve Krepaj Katlanma Sıklığı (Yatay, Dikey ve Çapraz gradyan histogramı)
+    let gxSum = 0, gySum = 0, laplaceSum = 0, zeroCrossings = 0;
+    for (let y = 1; y < size - 1; y++) {
+      for (let x = 1; x < size - 1; x++) {
+        const idx = y * size + x;
+        const gx = Math.abs(norm[idx + 1] - norm[idx - 1]);
+        const gy = Math.abs(norm[idx + size] - norm[idx - size]);
+        const lap = Math.abs(4 * norm[idx] - norm[idx - 1] - norm[idx + 1] - norm[idx - size] - norm[idx + size]);
+        gxSum += gx;
+        gySum += gy;
+        laplaceSum += lap;
+        if ((norm[idx] > 0 && norm[idx + 1] < 0) || (norm[idx] < 0 && norm[idx + 1] > 0)) zeroCrossings++;
+      }
+    }
+
+    const nPix = (size - 2) * (size - 2);
+    const dirRatio = gxSum / Math.max(0.001, gxSum + gySum); // Boyuna çizgi vs enine yığılma oranı
+    const sharpness = laplaceSum / nPix; // Keskin kırışıklık vs yumuşak su izi/blöf ayrımı
+    const freq = zeroCrossings / nPix; // Katlanma sıklığı
+    const contrast = std / Math.max(1, mean); // Bağıl kontrast
+
+    return { zHist, dirRatio, sharpness, freq, contrast };
+  }
+
+  function compareSignatures(a, b) {
+    let histDiff = 0;
+    for (let i = 0; i < 12; i++) histDiff += Math.abs(a.zHist[i] - b.zHist[i]);
+
+    const dirDiff = Math.abs(a.dirRatio - b.dirRatio);
+    const sharpDiff = Math.abs(a.sharpness - b.sharpness);
+    const freqDiff = Math.abs(a.freq - b.freq);
+    const contDiff = Math.abs(a.contrast - b.contrast);
+
+    const totalDist = histDiff * 1.1 + dirDiff * 3.0 + sharpDiff * 1.6 + freqDiff * 2.5 + contDiff * 1.4;
+    return Math.exp(-totalDist * 3.2);
+  }
+
   async function fetchImageAsDataUrl(fileName) {
     const urls = [
       "./" + fileName,
@@ -222,7 +423,7 @@
         });
       } catch (e) {}
     }
-    throw new Error("Yüklenemedi: " + fileName);
+    throw new Error("Yüklenemedi");
   }
 
   function dataUrlToImage(dataUrl) {
@@ -232,87 +433,6 @@
       img.onerror = reject;
       img.src = dataUrl;
     });
-  }
-
-  // Gelişmiş Yerel İmza: 1) 32x32 Doğrudan Yapısal Piksel Haritası + 2) Kenar Yönü (Yatay/Dikey) + 3) Kontrast Varyansı
-  function extractSignature(imgEl) {
-    const size = 64;
-    const canvas = document.createElement("canvas");
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(imgEl, 0, 0, size, size);
-    const data = ctx.getImageData(0, 0, size, size).data;
-
-    const gray = new Float32Array(size * size);
-    let sum = 0;
-    for (let i = 0; i < size * size; i++) {
-      const g = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2];
-      gray[i] = g;
-      sum += g;
-    }
-
-    // Ortalama ve standart sapma (Z-score) normalizasyonu
-    const mean = sum / gray.length;
-    let sqSum = 0;
-    for (let i = 0; i < gray.length; i++) sqSum += Math.pow(gray[i] - mean, 2);
-    const std = Math.max(1, Math.sqrt(sqSum / gray.length));
-
-    const norm = new Float32Array(gray.length);
-    for (let i = 0; i < gray.length; i++) norm[i] = (gray[i] - mean) / std;
-
-    // 1. 16x16 Kaba Yapısal Izgara (Aynı fotoğraf yüklendiğinde fark ~0 olur!)
-    const patch = new Float32Array(256);
-    for (let py = 0; py < 16; py++) {
-      for (let px = 0; px < 16; px++) {
-        let blockSum = 0;
-        for (let dy = 0; dy < 4; dy++) {
-          for (let dx = 0; dx < 4; dx++) {
-            blockSum += norm[(py * 4 + dy) * size + (px * 4 + dx)];
-          }
-        }
-        patch[py * 16 + px] = blockSum / 16;
-      }
-    }
-
-    // 2. Yatay ve Dikey Kenar Enerji Profili (Boyuna iz vs. enine yığılma ayrımı)
-    const rowEnergy = new Float32Array(16);
-    const colEnergy = new Float32Array(16);
-    let gxTotal = 0, gyTotal = 0;
-
-    for (let y = 1; y < size - 1; y++) {
-      for (let x = 1; x < size - 1; x++) {
-        const idx = y * size + x;
-        const gx = Math.abs(norm[idx + 1] - norm[idx - 1]);
-        const gy = Math.abs(norm[idx + size] - norm[idx - size]);
-        gxTotal += gx;
-        gyTotal += gy;
-        rowEnergy[Math.floor(y / 4)] += gy;
-        colEnergy[Math.floor(x / 4)] += gx;
-      }
-    }
-    const dirRatio = gxTotal / Math.max(0.001, gxTotal + gyTotal);
-    const textureLevel = (gxTotal + gyTotal) / (size * size);
-
-    return { patch, dirRatio, textureLevel, std };
-  }
-
-  function compareSignatures(a, b) {
-    // 1. Doğrudan 16x16 yapısal blok farkı (Aynı resimde 0.00 olur)
-    let patchDiff = 0;
-    for (let i = 0; i < 256; i++) patchDiff += Math.abs(a.patch[i] - b.patch[i]);
-    patchDiff /= 256;
-
-    // 2. Yatay/Dikey kenar yönü farkı
-    const dirDiff = Math.abs(a.dirRatio - b.dirRatio);
-
-    // 3. Doku keskinliği ve kontrast farkı
-    const texDiff = Math.abs(a.textureLevel - b.textureLevel);
-    const stdDiff = Math.abs(a.std - b.std) / 128;
-
-    const totalDist = patchDiff * 1.8 + dirDiff * 2.2 + texDiff * 1.2 + stdDiff * 0.6;
-    // Keskin üstel skorlama: En yakın eşleşme açık ara öne çıkar
-    return Math.exp(-totalDist * 3.5);
   }
 
   async function loadGuideTexts() {
@@ -360,7 +480,7 @@
           fetchImageAsDataUrl(fname)
             .then(async (dataUrl) => {
               const img = await dataUrlToImage(dataUrl);
-              const sig = extractSignature(img);
+              const sig = extractTextureSignature(img);
               refStore[d.id].push({ sig, dataUrl });
               totalImages++;
             })
@@ -387,36 +507,42 @@
     const file = e.target.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      currentTestBase64 = ev.target.result;
-      previewImg.onload = () => {
-        previewImg.style.display = "block";
-        imageReady = true;
-        aiReasonBox.style.display = "none";
-        topResult.textContent = "Fotoğraf yüklendi. 'Analiz Et' butonuna basın.";
-      };
-      previewImg.src = currentTestBase64;
+    reader.onload = async (ev) => {
+      loadedTestImg = await dataUrlToImage(ev.target.result);
+      selection = null;
+      resetSelectionBtn.style.display = "none";
+
+      const maxW = 520;
+      const scale = Math.min(1, maxW / loadedTestImg.naturalWidth);
+      cropCanvas.width = Math.round(loadedTestImg.naturalWidth * scale);
+      cropCanvas.height = Math.round(loadedTestImg.naturalHeight * scale);
+
+      canvasWrap.style.display = "block";
+      cropHint.style.display = "block";
+      aiReasonBox.style.display = "none";
+      redrawCanvas();
+      topResult.textContent = "Hata bölgesini daire içine alın veya doğrudan 'Analiz Et'e basın.";
     };
     reader.readAsDataURL(file);
   });
 
   clearBtn.addEventListener("click", () => {
     fileInput.value = "";
-    previewImg.removeAttribute("src");
-    previewImg.style.display = "none";
-    imageReady = false;
-    currentTestBase64 = "";
+    loadedTestImg = null;
+    selection = null;
+    canvasWrap.style.display = "none";
+    cropHint.style.display = "none";
+    resetSelectionBtn.style.display = "none";
     aiReasonBox.style.display = "none";
     topResult.textContent = "Henüz analiz yapılmadı.";
     renderBars({});
   });
 
-  // Gerçek Yapay Zeka (Gemini Vision) Analiz Fonksiyonu
-  async function analyzeWithGemini(apiKey) {
+  async function analyzeWithGemini(apiKey, testDataUrl) {
     const parts = [
       {
         text: `Sen endüstriyel tissue kağıdı üretim hattında uzman bir kalite kontrol mühendisisin.
-Aşağıda 6 farklı üretim hatasına ait referans fotoğraflar ve en sonda TEST EDİLECEK yeni bir kağıt hatası fotoğrafı verilmiştir.
+Aşağıda 6 farklı üretim hatasına ait referans fotoğraflar ve en sonda TEST EDİLECEK hatalı kağıt bölgesi verilmiştir.
 Hata kategorileri:
 - su_izi (1. Sorun: Su izi)
 - blof (2. Sorun: Blöf / hava kabarcığı katlanması)
@@ -426,7 +552,7 @@ Hata kategorileri:
 - yigilma (6. Sorun: Yığılma / krepaj birikmesi)
 
 Referans örnekleri inceleyip en sondaki TEST FOTOĞRAFININ bu 6 kategoriden hangisine benzediğini yüzde olarak puanla (toplamları 100 olsun) ve 1 cümlelik teknik gerekçe yaz.
-SADECE aşağıdaki JSON formatında yanıt ver, başka metin ekleme:
+SADECE aşağıdaki JSON formatında yanıt ver:
 {"scores":{"su_izi":0,"blof":0,"boyuna_iz":0,"broke_lekesi":0,"erime":0,"yigilma":0},"reason":"Kısa teknik açıklama"}`
       }
     ];
@@ -441,10 +567,9 @@ SADECE aşağıdaki JSON formatında yanıt ver, başka metin ekleme:
       }
     }
 
-    parts.push({ text: "TEST EDİLECEK HATA FOTOĞRAFI:" });
-    const testB64 = currentTestBase64.split(",")[1];
-    const testMime = currentTestBase64.split(";")[0].split(":")[1] || "image/jpeg";
-    parts.push({ inline_data: { mime_type: testMime, data: testB64 } });
+    parts.push({ text: "TEST EDİLECEK HATA BÖLGESİ:" });
+    const testB64 = testDataUrl.split(",")[1];
+    parts.push({ inline_data: { mime_type: "image/jpeg", data: testB64 } });
 
     const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
       method: "POST",
@@ -459,7 +584,7 @@ SADECE aşağıdaki JSON formatında yanıt ver, başka metin ekleme:
   }
 
   analyzeBtn.addEventListener("click", async () => {
-    if (!imageReady) {
+    if (!loadedTestImg) {
       topResult.textContent = "Lütfen önce sol taraftan bir fotoğraf seçin.";
       return;
     }
@@ -467,14 +592,14 @@ SADECE aşağıdaki JSON formatında yanıt ver, başka metin ekleme:
     const loadedTotal = Object.values(refStore).reduce((acc, arr) => acc + arr.length, 0);
     if (loadedTotal === 0) await initSystem();
 
+    const cropped = getCroppedSource();
     const apiKey = apiKeyInput.value.trim();
 
-    // 1) Gemini API anahtarı girilmişse Gerçek Yapay Zeka ile analiz et
     if (apiKey) {
       try {
-        topResult.textContent = "🤖 Yapay zeka fotoğrafları inceliyor...";
+        topResult.textContent = "🤖 Yapay zeka seçili bölgeyi inceliyor...";
         aiReasonBox.style.display = "none";
-        const aiRes = await analyzeWithGemini(apiKey);
+        const aiRes = await analyzeWithGemini(apiKey, cropped.dataUrl);
         const percentages = aiRes.scores;
 
         let winner = DEFECTS[0];
@@ -503,8 +628,7 @@ SADECE aşağıdaki JSON formatında yanıt ver, başka metin ekleme:
       }
     }
 
-    // 2) Yerel Yapısal Piksel + Yön Motoru
-    const testSig = extractSignature(previewImg);
+    const testSig = extractTextureSignature(cropped.canvas);
     const rawScores = {};
     let totalScore = 0;
 
@@ -541,7 +665,8 @@ SADECE aşağıdaki JSON formatında yanıt ver, başka metin ekleme:
       }
     }
 
-    topResult.textContent = `TESPİT EDİLEN SORUN: ${winner.name} (%${maxPct.toFixed(1)})`;
+    const scopeNote = (selection && selection.w > 10) ? " [İşaretli Bölge]" : "";
+    topResult.textContent = `TESPİT EDİLEN SORUN${scopeNote}: ${winner.name} (%${maxPct.toFixed(1)})`;
     renderBars(percentages);
     defectSelect.value = winner.id;
     guideText.textContent = winner.guide;
