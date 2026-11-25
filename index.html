@@ -19,13 +19,22 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background: var(--bg); color: var(--text); padding: 16px; line-height: 1.5; }
     .container { max-width: 1120px; margin: 0 auto; }
-    header { text-align: center; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+    header { text-align: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
     header h1 { font-size: 1.5rem; margin-bottom: 6px; }
     .status-badge {
       display: inline-block; padding: 4px 12px; border-radius: 999px;
       font-size: 0.85rem; background: #334155; color: #fbbf24; font-weight: 600;
     }
     .status-badge.ready { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+    .ai-bar {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 14px; margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    }
+    .ai-bar label { font-size: 0.85rem; color: var(--accent); font-weight: 600; }
+    .ai-bar input {
+      flex: 1; min-width: 220px; padding: 8px 10px; border-radius: 6px;
+      background: #0f172a; border: 1px solid var(--border); color: var(--text); font-size: 0.85rem;
+    }
     .grid { display: grid; grid-template-columns: 1fr 1.15fr; gap: 18px; }
     @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
@@ -64,6 +73,10 @@
     .ai-note {
       background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.35);
       padding: 10px 12px; border-radius: 8px; margin-bottom: 12px; font-size: 0.88rem; color: #e0f2fe; display: none;
+      word-break: break-word;
+    }
+    .ai-note.warn {
+      background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.45); color: #fecaca;
     }
     .bar-row { margin-bottom: 9px; }
     .bar-label { display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 3px; }
@@ -88,6 +101,11 @@
     <span id="engineStatus" class="status-badge">Referans fotoğraflar ve rehberler yükleniyor...</span>
   </header>
 
+  <div class="ai-bar">
+    <label for="apiKeyInput">🤖 Gemini API Anahtarı (Cihaz Hafızasına Kaydedilir):</label>
+    <input type="password" id="apiKeyInput" placeholder="Yeni aldığınız AIzaSy... anahtarını buraya yapıştırın" />
+  </div>
+
   <div class="grid">
     <div class="card">
       <h2>1. Test Edilecek Hatalı Kağıt Fotoğrafı</h2>
@@ -97,7 +115,7 @@
       </label>
 
       <div id="cropHint" class="crop-hint">
-        🎯 <b>İpucu:</b> Parmağınızla veya fareyle sürükleyerek <b>sadece hatanın olduğu bölgeyi</b> daire içine alın; arka plan gürültüsü elenir!
+        🎯 <b>İpucu:</b> Parmağınızla veya fareyle sürükleyerek <b>sadece hatanın olduğu bölgeyi</b> daire içine alın!
       </div>
 
       <div id="canvasWrap" class="canvas-wrap">
@@ -127,9 +145,6 @@
 </div>
 
 <script>
-  // GitHub taramasına takılmaması için bölünmüş gömülü Gemini API Anahtarı (Herkeste otomatik çalışır)
-  const EMBEDDED_API_KEY = ["AQ.Ab8RN6KhQYGA3OPV", "iv5hqf18I3X5g1E52b7MKSmUdRQIkHIGdg"].join("");
-
   const DEFECTS = [
     { id: "su_izi", name: "1. Sorun (su_izi)", prefix: "su_izi", baseFiles: ["1.jpg"], txtFiles: ["su_izi.txt"], guide: "su_izi.txt dosyası bulunamadı." },
     { id: "blof", name: "2. Sorun (blöf)", prefix: "blof", baseFiles: ["7.jpeg.jpg"], txtFiles: ["blof.txt", "blöf.txt"], guide: "blof.txt dosyası bulunamadı." },
@@ -159,6 +174,14 @@
   const topResult = document.getElementById("topResult");
   const aiReasonBox = document.getElementById("aiReasonBox");
   const engineStatus = document.getElementById("engineStatus");
+  const apiKeyInput = document.getElementById("apiKeyInput");
+
+  // Tarayıcı hafızasındaki eski geçersiz anahtarı temizle ve yeni girileni kaydet
+  const savedKey = localStorage.getItem("gemini_tissue_key_v2");
+  if (savedKey) apiKeyInput.value = savedKey;
+  apiKeyInput.addEventListener("input", () => {
+    localStorage.setItem("gemini_tissue_key_v2", apiKeyInput.value.trim());
+  });
 
   DEFECTS.forEach(d => {
     refStore[d.id] = [];
@@ -296,19 +319,34 @@
       const sy = Math.max(0, selection.y * scaleY);
       const sw = Math.min(loadedTestImg.naturalWidth - sx, selection.w * scaleX);
       const sh = Math.min(loadedTestImg.naturalHeight - sy, selection.h * scaleY);
-      out.width = Math.max(32, Math.round(sw));
-      out.height = Math.max(32, Math.round(sh));
+      out.width = Math.max(64, Math.round(sw));
+      out.height = Math.max(64, Math.round(sh));
       ctx.drawImage(loadedTestImg, sx, sy, sw, sh, 0, 0, out.width, out.height);
     } else {
       out.width = loadedTestImg.naturalWidth;
       out.height = loadedTestImg.naturalHeight;
       ctx.drawImage(loadedTestImg, 0, 0);
     }
-    return { canvas: out, dataUrl: out.toDataURL("image/jpeg", 0.9) };
+    return { canvas: out, dataUrl: out.toDataURL("image/jpeg", 0.92) };
+  }
+
+  function resizeDataUrl(dataUrl, maxDim = 768) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+        const c = document.createElement("canvas");
+        c.width = Math.round(img.naturalWidth * scale);
+        c.height = Math.round(img.naturalHeight * scale);
+        c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+        resolve(c.toDataURL("image/jpeg", 0.85));
+      };
+      img.src = dataUrl;
+    });
   }
 
   function extractTextureSignature(imgSource) {
-    const size = 96;
+    const size = 192;
     const canvas = document.createElement("canvas");
     canvas.width = size;
     canvas.height = size;
@@ -332,48 +370,53 @@
     const norm = new Float32Array(gray.length);
     for (let i = 0; i < gray.length; i++) norm[i] = (gray[i] - mean) / std;
 
-    const zHist = new Float32Array(12);
+    const zHist = new Float32Array(16);
     for (let i = 0; i < norm.length; i++) {
-      const clamped = Math.max(-2.99, Math.min(2.99, norm[i]));
-      const bin = Math.floor((clamped + 3) * 2);
+      const clamped = Math.max(-3.99, Math.min(3.99, norm[i]));
+      const bin = Math.floor((clamped + 4) * 2);
       zHist[bin]++;
     }
-    for (let i = 0; i < 12; i++) zHist[i] /= norm.length;
+    for (let i = 0; i < 16; i++) zHist[i] /= norm.length;
 
-    let gxSum = 0, gySum = 0, laplaceSum = 0, zeroCrossings = 0;
+    let gxSum = 0, gySum = 0, diagSum = 0, laplaceSum = 0, darkSpikes = 0, brightSpikes = 0;
     for (let y = 1; y < size - 1; y++) {
       for (let x = 1; x < size - 1; x++) {
         const idx = y * size + x;
         const gx = Math.abs(norm[idx + 1] - norm[idx - 1]);
         const gy = Math.abs(norm[idx + size] - norm[idx - size]);
+        const d1 = Math.abs(norm[idx + size + 1] - norm[idx - size - 1]);
         const lap = Math.abs(4 * norm[idx] - norm[idx - 1] - norm[idx + 1] - norm[idx - size] - norm[idx + size]);
         gxSum += gx;
         gySum += gy;
+        diagSum += d1;
         laplaceSum += lap;
-        if ((norm[idx] > 0 && norm[idx + 1] < 0) || (norm[idx] < 0 && norm[idx + 1] > 0)) zeroCrossings++;
+        if (norm[idx] < -1.8) darkSpikes++;
+        if (norm[idx] > 1.8) brightSpikes++;
       }
     }
 
     const nPix = (size - 2) * (size - 2);
     const dirRatio = gxSum / Math.max(0.001, gxSum + gySum);
+    const diagRatio = diagSum / Math.max(0.001, gxSum + gySum + diagSum);
     const sharpness = laplaceSum / nPix;
-    const freq = zeroCrossings / nPix;
-    const contrast = std / Math.max(1, mean);
+    const darkRatio = darkSpikes / nPix;
+    const brightRatio = brightSpikes / nPix;
 
-    return { zHist, dirRatio, sharpness, freq, contrast };
+    return { zHist, dirRatio, diagRatio, sharpness, darkRatio, brightRatio };
   }
 
   function compareSignatures(a, b) {
     let histDiff = 0;
-    for (let i = 0; i < 12; i++) histDiff += Math.abs(a.zHist[i] - b.zHist[i]);
+    for (let i = 0; i < 16; i++) histDiff += Math.abs(a.zHist[i] - b.zHist[i]);
 
     const dirDiff = Math.abs(a.dirRatio - b.dirRatio);
+    const diagDiff = Math.abs(a.diagRatio - b.diagRatio);
     const sharpDiff = Math.abs(a.sharpness - b.sharpness);
-    const freqDiff = Math.abs(a.freq - b.freq);
-    const contDiff = Math.abs(a.contrast - b.contrast);
+    const darkDiff = Math.abs(a.darkRatio - b.darkRatio);
+    const brightDiff = Math.abs(a.brightRatio - b.brightRatio);
 
-    const totalDist = histDiff * 1.1 + dirDiff * 3.0 + sharpDiff * 1.6 + freqDiff * 2.5 + contDiff * 1.4;
-    return Math.exp(-totalDist * 3.2);
+    const totalDist = histDiff * 1.2 + dirDiff * 3.5 + diagDiff * 2.0 + sharpDiff * 1.8 + (darkDiff + brightDiff) * 4.0;
+    return Math.exp(-totalDist * 3.0);
   }
 
   async function fetchImageAsDataUrl(fileName) {
@@ -449,7 +492,8 @@
       for (const fname of candidates) {
         tasks.push(
           fetchImageAsDataUrl(fname)
-            .then(async (dataUrl) => {
+            .then(async (rawUrl) => {
+              const dataUrl = await resizeDataUrl(rawUrl, 768);
               const img = await dataUrlToImage(dataUrl);
               const sig = extractTextureSignature(img);
               refStore[d.id].push({ sig, dataUrl });
@@ -467,7 +511,7 @@
     renderBars({});
 
     if (totalImages > 0) {
-      engineStatus.textContent = `Sistem Hazır (${totalImages} Örnek Fotoğraf, ${txtCount}/6 Rehber • Gemini AI Aktif)`;
+      engineStatus.textContent = `Sistem Hazır (${totalImages} Örnek Fotoğraf, ${txtCount}/6 Rehber Yüklendi)`;
       engineStatus.classList.add("ready");
     } else {
       engineStatus.textContent = "Uyarı: Referans resimleri yüklenemedi!";
@@ -509,70 +553,58 @@
     renderBars({});
   });
 
-  // Yeni nesil Gemini API anahtarı (AQ.Ab8RN6... veya AIzaSy...) ile çalışan Yapay Zeka Motoru
   async function analyzeWithGemini(apiKey, testDataUrl) {
+    const guideContext = DEFECTS.map(d => `- ${d.id} (${d.name}): ${d.guide.replace(/\s+/g, " ").slice(0, 280)}`).join("\n");
+
     const parts = [
       {
-        text: `Sen endüstriyel tissue kağıdı üretim hattında uzman bir kalite kontrol mühendisisin.
-Aşağıda 6 farklı üretim hatasına ait referans fotoğraflar ve en sonda TEST EDİLECEK hatalı kağıt bölgesi verilmiştir.
-Hata kategorileri:
-- su_izi (1. Sorun: Su izi)
-- blof (2. Sorun: Blöf / hava kabarcığı katlanması)
-- boyuna_iz (3. Sorun: Boyuna çizgi / doktor veya keçe izi)
-- broke_lekesi (4. Sorun: Broke lekesi / kir)
-- erime (5. Sorun: Erime / yanık / aşırı nem)
-- yigilma (6. Sorun: Yığılma / krepaj birikmesi)
+        text: `Sen endüstriyel tissue kağıdı üretim hattında çalışan uzman bir kalite kontrol ve proses mühendisisin.
+Aşağıda 6 farklı kağıt üretim hatasının teknik tanımları ve referans fotoğrafları verilmiştir. En sonda ise operatörün sahadan çektiği TEST HATASI fotoğrafı yer almaktadır.
 
-Referans örnekleri inceleyip en sondaki TEST FOTOĞRAFININ bu 6 kategoriden hangisine benzediğini yüzde olarak puanla (toplamları 100 olsun) ve 1 cümlelik teknik gerekçe yaz.
+HATA KATEGORİLERİ VE TEKNİK ÖZELLİKLERİ:
+${guideContext}
+
+GÖREVİN:
+1. Referans fotoğraflardaki görsel dokuyu (katlanma, kabarcık, boyuna çizgi, leke, erime, krepaj yığılması) karşılaştır.
+2. En sondaki TEST FOTOĞRAFININ bu 6 kategoriden hangisi olduğunu belirle ve olasılık yüzdelerini dağıt (toplamları 100 olsun).
+3. Neden o hatayı seçtiğini 1-2 net cümleyle açıkla.
+
 SADECE aşağıdaki JSON formatında yanıt ver:
-{"scores":{"su_izi":0,"blof":0,"boyuna_iz":0,"broke_lekesi":0,"erime":0,"yigilma":0},"reason":"Kısa teknik açıklama"}`
+{"scores":{"su_izi":0,"blof":0,"boyuna_iz":0,"broke_lekesi":0,"erime":0,"yigilma":0},"reason":"Teknik açıklama"}`
       }
     ];
 
     for (const d of DEFECTS) {
-      const items = refStore[d.id] || [];
-      if (items.length > 0) {
-        parts.push({ text: `REFERANS ÖRNEK (${d.id} - ${d.name}):` });
-        const b64 = items[0].dataUrl.split(",")[1];
-        const mime = items[0].dataUrl.split(";")[0].split(":")[1] || "image/jpeg";
-        parts.push({ inline_data: { mime_type: mime, data: b64 } });
-      }
+      const items = (refStore[d.id] || []).slice(0, 3);
+      items.forEach((item, idx) => {
+        parts.push({ text: `REFERANS (${d.id} - Örnek ${idx + 1}):` });
+        const b64 = item.dataUrl.split(",")[1];
+        parts.push({ inline_data: { mime_type: "image/jpeg", data: b64 } });
+      });
     }
 
-    parts.push({ text: "TEST EDİLECEK HATA BÖLGESİ:" });
-    const testB64 = testDataUrl.split(",")[1];
-    parts.push({ inline_data: { mime_type: "image/jpeg", data: testB64 } });
+    const resizedTest = await resizeDataUrl(testDataUrl, 768);
+    parts.push({ text: "TEST EDİLECEK HATA FOTOĞRAFI (BUNU TEŞHİS ET):" });
+    parts.push({ inline_data: { mime_type: "image/jpeg", data: resizedTest.split(",")[1] } });
 
-    const payload = JSON.stringify({ contents: [{ parts }] });
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: { temperature: 0.1 }
+      })
+    });
 
-    // Önce standart generativelanguage uç noktasını dene, gerekirse Vertex Express uç noktasını yedek olarak kullan
-    const endpoints = [
-      {
-        url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
-        headers: { "Content-Type": "application/json" }
-      },
-      {
-        url: `https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
-        headers: { "Content-Type": "application/json" }
-      }
-    ];
-
-    let lastErr = null;
-    for (const ep of endpoints) {
-      try {
-        const resp = await fetch(ep.url, { method: "POST", headers: ep.headers, body: payload });
-        if (!resp.ok) {
-          lastErr = new Error("API Durumu: " + resp.status);
-          continue;
-        }
-        const json = await resp.json();
-        const rawText = json.candidates[0].content.parts[0].text.replace(/```json|```/g, "").trim();
-        return JSON.parse(rawText);
-      } catch (e) {
-        lastErr = e;
-      }
+    if (!resp.ok) {
+      const errJson = await resp.json().catch(() => ({}));
+      const detail = errJson?.error?.message || ("HTTP " + resp.status);
+      throw new Error(detail);
     }
-    throw lastErr || new Error("AI servisine bağlanılamadı.");
+
+    const json = await resp.json();
+    const rawText = json.candidates[0].content.parts[0].text.replace(/```json|```/g, "").trim();
+    return JSON.parse(rawText);
   }
 
   analyzeBtn.addEventListener("click", async () => {
@@ -585,13 +617,14 @@ SADECE aşağıdaki JSON formatında yanıt ver:
     if (loadedTotal === 0) await initSystem();
 
     const cropped = getCroppedSource();
+    aiReasonBox.classList.remove("warn");
+    const apiKey = apiKeyInput.value.trim();
 
-    // 1) Gömülü Gemini Yapay Zeka ile analiz et
-    if (EMBEDDED_API_KEY) {
+    if (apiKey) {
       try {
-        topResult.textContent = "🤖 Gemini Yapay Zeka görseli inceliyor...";
+        topResult.textContent = "🤖 Gemini Yapay Zeka tüm referanslarla kıyaslıyor...";
         aiReasonBox.style.display = "none";
-        const aiRes = await analyzeWithGemini(EMBEDDED_API_KEY, cropped.dataUrl);
+        const aiRes = await analyzeWithGemini(apiKey, cropped.dataUrl);
         const percentages = aiRes.scores;
 
         let winner = DEFECTS[0];
@@ -607,21 +640,19 @@ SADECE aşağıdaki JSON formatında yanıt ver:
 
         const scopeNote = (selection && selection.w > 10) ? " [İşaretli Bölge]" : "";
         topResult.textContent = `🤖 AI TESPİTİ${scopeNote}: ${winner.name} (%${maxPct.toFixed(1)})`;
-        if (aiRes.reason) {
-          aiReasonBox.textContent = "AI Görsel Değerlendirmesi: " + aiRes.reason;
-          aiReasonBox.style.display = "block";
-        }
+        aiReasonBox.textContent = "🤖 Gemini AI Mühendis Yorumu: " + (aiRes.reason || "Analiz tamamlandı.");
+        aiReasonBox.style.display = "block";
         renderBars(percentages);
         defectSelect.value = winner.id;
         guideText.textContent = winner.guide;
         return;
       } catch (err) {
-        aiReasonBox.textContent = "Not: AI servisine ulaşılamadı (" + err.message + "), yerel motora geçildi.";
+        aiReasonBox.textContent = `⚠️ AI Bağlantı Hatası: ${err.message} — Şu an yedek yerel motor çalışıyor.`;
+        aiReasonBox.classList.add("warn");
         aiReasonBox.style.display = "block";
       }
     }
 
-    // 2) Yedek Yerel Doku Motoru
     const testSig = extractTextureSignature(cropped.canvas);
     const rawScores = {};
     let totalScore = 0;
@@ -655,7 +686,7 @@ SADECE aşağıdaki JSON formatında yanıt ver:
     }
 
     const scopeNote = (selection && selection.w > 10) ? " [İşaretli Bölge]" : "";
-    topResult.textContent = `TESPİT EDİLEN SORUN${scopeNote}: ${winner.name} (%${maxPct.toFixed(1)})`;
+    topResult.textContent = `⚙️ YEREL MOTOR TESPİTİ${scopeNote}: ${winner.name} (%${maxPct.toFixed(1)})`;
     renderBars(percentages);
     defectSelect.value = winner.id;
     guideText.textContent = winner.guide;
