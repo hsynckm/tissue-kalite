@@ -19,13 +19,23 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background: var(--bg); color: var(--text); padding: 20px; line-height: 1.5; }
     .container { max-width: 1100px; margin: 0 auto; }
-    header { text-align: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
-    header h1 { font-size: 1.6rem; margin-bottom: 6px; }
+    header { text-align: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+    header h1 { font-size: 1.6rem; margin-bottom: 8px; }
     .status-badge {
       display: inline-block; padding: 4px 12px; border-radius: 999px;
       font-size: 0.85rem; background: #334155; color: #fbbf24; font-weight: 600;
     }
     .status-badge.ready { background: rgba(34, 197, 94, 0.15); color: var(--success); }
+    .ai-bar {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 16px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+    }
+    .ai-bar label { font-size: 0.88rem; color: var(--accent); font-weight: 600; }
+    .ai-bar input {
+      flex: 1; min-width: 220px; padding: 8px 12px; border-radius: 6px;
+      background: #0f172a; border: 1px solid var(--border); color: var(--text); font-size: 0.88rem;
+    }
+    .ai-bar small { color: var(--muted); font-size: 0.8rem; width: 100%; }
     .grid { display: grid; grid-template-columns: 1fr 1.15fr; gap: 20px; }
     @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
@@ -49,7 +59,11 @@
     #clearBtn:hover { background: #475569; }
     .top-result {
       background: rgba(249, 115, 22, 0.12); border: 1px solid var(--primary);
-      padding: 14px; border-radius: 8px; margin-bottom: 16px; font-weight: 700; font-size: 1.1rem;
+      padding: 14px; border-radius: 8px; margin-bottom: 12px; font-weight: 700; font-size: 1.05rem;
+    }
+    .ai-note {
+      background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.35);
+      padding: 10px 12px; border-radius: 8px; margin-bottom: 14px; font-size: 0.88rem; color: #e0f2fe; display: none;
     }
     .bar-row { margin-bottom: 10px; }
     .bar-label { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 4px; }
@@ -74,6 +88,13 @@
     <span id="engineStatus" class="status-badge">Referans fotoğraflar ve rehberler yükleniyor...</span>
   </header>
 
+  <!-- Opsiyonel Gerçek Yapay Zeka (Gemini Vision) Ayarı -->
+  <div class="ai-bar">
+    <label for="apiKeyInput">🤖 Yapay Zeka Modu (İsteğe Bağlı Gemini API Key):</label>
+    <input type="password" id="apiKeyInput" placeholder="AIzaSy... (Boş bırakılırsa gelişmiş yerel motor çalışır)" />
+    <small>aistudio.google.com adresinden alınan ücretsiz anahtarı girerseniz görüntüler doğrudan Gemini Yapay Zeka ile analiz edilir.</small>
+  </div>
+
   <div class="grid">
     <div class="card">
       <h2>1. Test Edilecek Hatalı Kağıt Fotoğrafı</h2>
@@ -92,6 +113,7 @@
     <div class="card">
       <h2>2. Analiz ve Oran Sonuçları</h2>
       <div id="topResult" class="top-result">Henüz analiz yapılmadı.</div>
+      <div id="aiReasonBox" class="ai-note"></div>
       <div id="barsContainer"></div>
 
       <label class="select-label" for="defectSelect">
@@ -104,61 +126,19 @@
 </div>
 
 <script>
-  // Her sorun için ana dosya + otomatik taranacak ek örnek isimleri (_2.jpg ... _10.jpg)
   const DEFECTS = [
-    {
-      id: "su_izi",
-      name: "1. Sorun (su_izi)",
-      prefix: "su_izi",
-      baseFiles: ["1.jpg"],
-      txtFiles: ["su_izi.txt"],
-      guide: "su_izi.txt dosyası bulunamadı."
-    },
-    {
-      id: "blof",
-      name: "2. Sorun (blöf)",
-      prefix: "blof",
-      baseFiles: ["7.jpeg.jpg"],
-      txtFiles: ["blof.txt", "blöf.txt"],
-      guide: "blof.txt dosyası bulunamadı."
-    },
-    {
-      id: "boyuna_iz",
-      name: "3. Sorun (boyuna_iz)",
-      prefix: "boyuna_iz",
-      baseFiles: ["9.jpg"],
-      txtFiles: ["boyuna_iz.txt"],
-      guide: "boyuna_iz.txt dosyası bulunamadı."
-    },
-    {
-      id: "broke_lekesi",
-      name: "4. Sorun (broke_lekesi)",
-      prefix: "broke_lekesi",
-      baseFiles: ["3.jpg"],
-      txtFiles: ["broke_lekesi.txt"],
-      guide: "broke_lekesi.txt dosyası bulunamadı."
-    },
-    {
-      id: "erime",
-      name: "5. Sorun (erime)",
-      prefix: "erime",
-      baseFiles: ["5.jpg"],
-      txtFiles: ["erime.txt"],
-      guide: "erime.txt dosyası bulunamadı."
-    },
-    {
-      id: "yigilma",
-      name: "6. Sorun (yigilma)",
-      prefix: "yigilma",
-      baseFiles: ["2.jpg"],
-      txtFiles: ["yigilma.txt", "yığılma.txt"],
-      guide: "yigilma.txt dosyası bulunamadı."
-    }
+    { id: "su_izi", name: "1. Sorun (su_izi)", prefix: "su_izi", baseFiles: ["1.jpg"], txtFiles: ["su_izi.txt"], guide: "su_izi.txt dosyası bulunamadı." },
+    { id: "blof", name: "2. Sorun (blöf)", prefix: "blof", baseFiles: ["7.jpeg.jpg"], txtFiles: ["blof.txt", "blöf.txt"], guide: "blof.txt dosyası bulunamadı." },
+    { id: "boyuna_iz", name: "3. Sorun (boyuna_iz)", prefix: "boyuna_iz", baseFiles: ["9.jpg"], txtFiles: ["boyuna_iz.txt"], guide: "boyuna_iz.txt dosyası bulunamadı." },
+    { id: "broke_lekesi", name: "4. Sorun (broke_lekesi)", prefix: "broke_lekesi", baseFiles: ["3.jpg"], txtFiles: ["broke_lekesi.txt"], guide: "broke_lekesi.txt dosyası bulunamadı." },
+    { id: "erime", name: "5. Sorun (erime)", prefix: "erime", baseFiles: ["5.jpg"], txtFiles: ["erime.txt"], guide: "erime.txt dosyası bulunamadı." },
+    { id: "yigilma", name: "6. Sorun (yigilma)", prefix: "yigilma", baseFiles: ["2.jpg"], txtFiles: ["yigilma.txt", "yığılma.txt"], guide: "yigilma.txt dosyası bulunamadı." }
   ];
 
-  // Her sorun için birden fazla referans imzası tutulur: { su_izi: [sig1, sig2, ...], ... }
-  const refFeaturesMap = {};
+  // Her sorun için: [{ sig, base64 }]
+  const refStore = {};
   let imageReady = false;
+  let currentTestBase64 = "";
 
   const defectSelect = document.getElementById("defectSelect");
   const guideText = document.getElementById("guideText");
@@ -168,10 +148,19 @@
   const analyzeBtn = document.getElementById("analyzeBtn");
   const clearBtn = document.getElementById("clearBtn");
   const topResult = document.getElementById("topResult");
+  const aiReasonBox = document.getElementById("aiReasonBox");
   const engineStatus = document.getElementById("engineStatus");
+  const apiKeyInput = document.getElementById("apiKeyInput");
+
+  // Kayıtlı API anahtarı varsa hatırla
+  const savedKey = localStorage.getItem("gemini_tissue_api_key");
+  if (savedKey) apiKeyInput.value = savedKey;
+  apiKeyInput.addEventListener("input", () => {
+    localStorage.setItem("gemini_tissue_api_key", apiKeyInput.value.trim());
+  });
 
   DEFECTS.forEach(d => {
-    refFeaturesMap[d.id] = [];
+    refStore[d.id] = [];
     const opt = document.createElement("option");
     opt.value = d.id;
     opt.textContent = d.name;
@@ -187,7 +176,7 @@
   function updateDropdownLabels() {
     Array.from(defectSelect.options).forEach(opt => {
       const d = DEFECTS.find(item => item.id === opt.value);
-      const count = refFeaturesMap[d.id] ? refFeaturesMap[d.id].length : 0;
+      const count = refStore[d.id] ? refStore[d.id].length : 0;
       opt.textContent = `${d.name} [${count} Örnek]`;
     });
   }
@@ -197,7 +186,7 @@
     const sorted = [...DEFECTS].sort((a, b) => (scoresMap[b.id] || 0) - (scoresMap[a.id] || 0));
     sorted.forEach((d, idx) => {
       const val = scoresMap[d.id] || 0;
-      const count = refFeaturesMap[d.id] ? refFeaturesMap[d.id].length : 0;
+      const count = refStore[d.id] ? refStore[d.id].length : 0;
       const row = document.createElement("div");
       row.className = "bar-row";
       row.innerHTML = `
@@ -214,8 +203,40 @@
   }
   renderBars({});
 
+  // Tarayıcı güvenlik kilidine (Tainted Canvas) takılmadan görüntüyü Blob -> DataURL olarak yükle
+  async function fetchImageAsDataUrl(fileName) {
+    const urls = [
+      "./" + fileName,
+      "https://raw.githubusercontent.com/hsynckm/tissue-kalite/main/" + fileName
+    ];
+    for (const u of urls) {
+      try {
+        const resp = await fetch(u);
+        if (!resp.ok) continue;
+        const blob = await resp.blob();
+        return await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {}
+    }
+    throw new Error("Yüklenemedi: " + fileName);
+  }
+
+  function dataUrlToImage(dataUrl) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+  }
+
+  // Gelişmiş Yerel İmza: 1) 32x32 Doğrudan Yapısal Piksel Haritası + 2) Kenar Yönü (Yatay/Dikey) + 3) Kontrast Varyansı
   function extractSignature(imgEl) {
-    const size = 128;
+    const size = 64;
     const canvas = document.createElement("canvas");
     canvas.width = size;
     canvas.height = size;
@@ -224,79 +245,74 @@
     const data = ctx.getImageData(0, 0, size, size).data;
 
     const gray = new Float32Array(size * size);
-    let minVal = 255, maxVal = 0;
-
+    let sum = 0;
     for (let i = 0; i < size * size; i++) {
       const g = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2];
       gray[i] = g;
-      if (g < minVal) minVal = g;
-      if (g > maxVal) maxVal = g;
+      sum += g;
     }
 
-    const range = Math.max(1, maxVal - minVal);
-    for (let i = 0; i < gray.length; i++) {
-      gray[i] = ((gray[i] - minVal) / range) * 255;
+    // Ortalama ve standart sapma (Z-score) normalizasyonu
+    const mean = sum / gray.length;
+    let sqSum = 0;
+    for (let i = 0; i < gray.length; i++) sqSum += Math.pow(gray[i] - mean, 2);
+    const std = Math.max(1, Math.sqrt(sqSum / gray.length));
+
+    const norm = new Float32Array(gray.length);
+    for (let i = 0; i < gray.length; i++) norm[i] = (gray[i] - mean) / std;
+
+    // 1. 16x16 Kaba Yapısal Izgara (Aynı fotoğraf yüklendiğinde fark ~0 olur!)
+    const patch = new Float32Array(256);
+    for (let py = 0; py < 16; py++) {
+      for (let px = 0; px < 16; px++) {
+        let blockSum = 0;
+        for (let dy = 0; dy < 4; dy++) {
+          for (let dx = 0; dx < 4; dx++) {
+            blockSum += norm[(py * 4 + dy) * size + (px * 4 + dx)];
+          }
+        }
+        patch[py * 16 + px] = blockSum / 16;
+      }
     }
 
-    const hist = new Float32Array(16);
-    for (let i = 0; i < gray.length; i++) {
-      const bin = Math.min(15, Math.floor(gray[i] / 16));
-      hist[bin]++;
-    }
-    for (let i = 0; i < 16; i++) hist[i] /= gray.length;
-
+    // 2. Yatay ve Dikey Kenar Enerji Profili (Boyuna iz vs. enine yığılma ayrımı)
+    const rowEnergy = new Float32Array(16);
+    const colEnergy = new Float32Array(16);
     let gxTotal = 0, gyTotal = 0;
-    const grid = new Float32Array(64);
+
     for (let y = 1; y < size - 1; y++) {
       for (let x = 1; x < size - 1; x++) {
         const idx = y * size + x;
-        const gx = Math.abs(gray[idx + 1] - gray[idx - 1]);
-        const gy = Math.abs(gray[idx + size] - gray[idx - size]);
+        const gx = Math.abs(norm[idx + 1] - norm[idx - 1]);
+        const gy = Math.abs(norm[idx + size] - norm[idx - size]);
         gxTotal += gx;
         gyTotal += gy;
-        const cell = Math.floor(y / 16) * 8 + Math.floor(x / 16);
-        grid[cell] += (gx + gy) / 510;
+        rowEnergy[Math.floor(y / 4)] += gy;
+        colEnergy[Math.floor(x / 4)] += gx;
       }
     }
-    for (let i = 0; i < 64; i++) grid[i] /= 256;
-    const edgeRatio = gxTotal / Math.max(1, gxTotal + gyTotal);
-    const edgeDensity = (gxTotal + gyTotal) / (size * size * 255);
+    const dirRatio = gxTotal / Math.max(0.001, gxTotal + gyTotal);
+    const textureLevel = (gxTotal + gyTotal) / (size * size);
 
-    return { hist, grid, edgeRatio, edgeDensity };
+    return { patch, dirRatio, textureLevel, std };
   }
 
   function compareSignatures(a, b) {
-    let histDist = 0;
-    for (let i = 0; i < 16; i++) histDist += Math.abs(a.hist[i] - b.hist[i]);
+    // 1. Doğrudan 16x16 yapısal blok farkı (Aynı resimde 0.00 olur)
+    let patchDiff = 0;
+    for (let i = 0; i < 256; i++) patchDiff += Math.abs(a.patch[i] - b.patch[i]);
+    patchDiff /= 256;
 
-    let gridDist = 0;
-    for (let i = 0; i < 64; i++) gridDist += Math.abs(a.grid[i] - b.grid[i]);
-    gridDist /= 64;
+    // 2. Yatay/Dikey kenar yönü farkı
+    const dirDiff = Math.abs(a.dirRatio - b.dirRatio);
 
-    const dirDist = Math.abs(a.edgeRatio - b.edgeRatio);
-    const densDist = Math.abs(a.edgeDensity - b.edgeDensity);
+    // 3. Doku keskinliği ve kontrast farkı
+    const texDiff = Math.abs(a.textureLevel - b.textureLevel);
+    const stdDiff = Math.abs(a.std - b.std) / 128;
 
-    const totalDist = histDist * 0.35 + gridDist * 1.4 + dirDist * 0.9 + densDist * 0.8;
-    const similarity = Math.max(0.01, 1 / (1 + totalDist * 4));
-    return Math.pow(similarity, 3);
-  }
-
-  function loadImageSingle(url, useCors) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      if (useCors) img.crossOrigin = "anonymous";
-      img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("Yüklenemedi"));
-      img.src = url;
-    });
-  }
-
-  async function tryLoadRefImage(fileName) {
-    try {
-      return await loadImageSingle("./" + fileName, false);
-    } catch (e1) {
-      return await loadImageSingle("https://raw.githubusercontent.com/hsynckm/tissue-kalite/main/" + fileName, true);
-    }
+    const totalDist = patchDiff * 1.8 + dirDiff * 2.2 + texDiff * 1.2 + stdDiff * 0.6;
+    // Keskin üstel skorlama: En yakın eşleşme açık ara öne çıkar
+    return Math.exp(-totalDist * 3.5);
   }
 
   async function loadGuideTexts() {
@@ -332,24 +348,23 @@
 
   async function initSystem() {
     let totalImages = 0;
-
-    // Tüm sorunlar için hem ana dosyayı hem de _2.jpg ... _10.jpg ek örneklerini paralel tara
     const tasks = [];
+
     for (const d of DEFECTS) {
-      refFeaturesMap[d.id] = [];
+      refStore[d.id] = [];
       const candidates = [...d.baseFiles];
-      for (let n = 2; n <= 10; n++) {
-        candidates.push(`${d.prefix}_${n}.jpg`);
-      }
+      for (let n = 2; n <= 10; n++) candidates.push(`${d.prefix}_${n}.jpg`);
 
       for (const fname of candidates) {
         tasks.push(
-          tryLoadRefImage(fname)
-            .then(img => {
-              refFeaturesMap[d.id].push(extractSignature(img));
+          fetchImageAsDataUrl(fname)
+            .then(async (dataUrl) => {
+              const img = await dataUrlToImage(dataUrl);
+              const sig = extractSignature(img);
+              refStore[d.id].push({ sig, dataUrl });
               totalImages++;
             })
-            .catch(() => {}) // Yüklenmemiş ek numaraları sessizce atla
+            .catch(() => {})
         );
       }
     }
@@ -364,7 +379,7 @@
       engineStatus.textContent = `Sistem Hazır (${totalImages} Örnek Fotoğraf, ${txtCount}/6 Rehber Yüklendi)`;
       engineStatus.classList.add("ready");
     } else {
-      engineStatus.textContent = "Uyarı: Referans resimleri yüklenemedi, dosya yolunu kontrol edin.";
+      engineStatus.textContent = "Uyarı: Referans resimleri yüklenemedi!";
     }
   }
 
@@ -373,12 +388,14 @@
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
+      currentTestBase64 = ev.target.result;
       previewImg.onload = () => {
         previewImg.style.display = "block";
         imageReady = true;
+        aiReasonBox.style.display = "none";
         topResult.textContent = "Fotoğraf yüklendi. 'Analiz Et' butonuna basın.";
       };
-      previewImg.src = ev.target.result;
+      previewImg.src = currentTestBase64;
     };
     reader.readAsDataURL(file);
   });
@@ -388,9 +405,58 @@
     previewImg.removeAttribute("src");
     previewImg.style.display = "none";
     imageReady = false;
+    currentTestBase64 = "";
+    aiReasonBox.style.display = "none";
     topResult.textContent = "Henüz analiz yapılmadı.";
     renderBars({});
   });
+
+  // Gerçek Yapay Zeka (Gemini Vision) Analiz Fonksiyonu
+  async function analyzeWithGemini(apiKey) {
+    const parts = [
+      {
+        text: `Sen endüstriyel tissue kağıdı üretim hattında uzman bir kalite kontrol mühendisisin.
+Aşağıda 6 farklı üretim hatasına ait referans fotoğraflar ve en sonda TEST EDİLECEK yeni bir kağıt hatası fotoğrafı verilmiştir.
+Hata kategorileri:
+- su_izi (1. Sorun: Su izi)
+- blof (2. Sorun: Blöf / hava kabarcığı katlanması)
+- boyuna_iz (3. Sorun: Boyuna çizgi / doktor veya keçe izi)
+- broke_lekesi (4. Sorun: Broke lekesi / kir)
+- erime (5. Sorun: Erime / yanık / aşırı nem)
+- yigilma (6. Sorun: Yığılma / krepaj birikmesi)
+
+Referans örnekleri inceleyip en sondaki TEST FOTOĞRAFININ bu 6 kategoriden hangisine benzediğini yüzde olarak puanla (toplamları 100 olsun) ve 1 cümlelik teknik gerekçe yaz.
+SADECE aşağıdaki JSON formatında yanıt ver, başka metin ekleme:
+{"scores":{"su_izi":0,"blof":0,"boyuna_iz":0,"broke_lekesi":0,"erime":0,"yigilma":0},"reason":"Kısa teknik açıklama"}`
+      }
+    ];
+
+    for (const d of DEFECTS) {
+      const items = refStore[d.id] || [];
+      if (items.length > 0) {
+        parts.push({ text: `REFERANS ÖRNEK (${d.id} - ${d.name}):` });
+        const b64 = items[0].dataUrl.split(",")[1];
+        const mime = items[0].dataUrl.split(";")[0].split(":")[1] || "image/jpeg";
+        parts.push({ inline_data: { mime_type: mime, data: b64 } });
+      }
+    }
+
+    parts.push({ text: "TEST EDİLECEK HATA FOTOĞRAFI:" });
+    const testB64 = currentTestBase64.split(",")[1];
+    const testMime = currentTestBase64.split(";")[0].split(":")[1] || "image/jpeg";
+    parts.push({ inline_data: { mime_type: testMime, data: testB64 } });
+
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts }] })
+    });
+
+    if (!resp.ok) throw new Error("Gemini API hatası: " + resp.status);
+    const json = await resp.json();
+    const rawText = json.candidates[0].content.parts[0].text.replace(/```json|```/g, "").trim();
+    return JSON.parse(rawText);
+  }
 
   analyzeBtn.addEventListener("click", async () => {
     if (!imageReady) {
@@ -398,25 +464,59 @@
       return;
     }
 
-    const loadedTotal = Object.values(refFeaturesMap).reduce((acc, arr) => acc + arr.length, 0);
-    if (loadedTotal === 0) {
-      await initSystem();
+    const loadedTotal = Object.values(refStore).reduce((acc, arr) => acc + arr.length, 0);
+    if (loadedTotal === 0) await initSystem();
+
+    const apiKey = apiKeyInput.value.trim();
+
+    // 1) Gemini API anahtarı girilmişse Gerçek Yapay Zeka ile analiz et
+    if (apiKey) {
+      try {
+        topResult.textContent = "🤖 Yapay zeka fotoğrafları inceliyor...";
+        aiReasonBox.style.display = "none";
+        const aiRes = await analyzeWithGemini(apiKey);
+        const percentages = aiRes.scores;
+
+        let winner = DEFECTS[0];
+        let maxPct = -1;
+        for (const d of DEFECTS) {
+          const pct = Number(percentages[d.id] || 0);
+          percentages[d.id] = pct;
+          if (pct > maxPct) {
+            maxPct = pct;
+            winner = d;
+          }
+        }
+
+        topResult.textContent = `🤖 AI TESPİTİ: ${winner.name} (%${maxPct.toFixed(1)})`;
+        if (aiRes.reason) {
+          aiReasonBox.textContent = "AI Görsel Değerlendirmesi: " + aiRes.reason;
+          aiReasonBox.style.display = "block";
+        }
+        renderBars(percentages);
+        defectSelect.value = winner.id;
+        guideText.textContent = winner.guide;
+        return;
+      } catch (err) {
+        aiReasonBox.textContent = "Not: Gemini AI bağlantısında hata oluştu (" + err.message + "), yerel motora geçildi.";
+        aiReasonBox.style.display = "block";
+      }
     }
 
+    // 2) Yerel Yapısal Piksel + Yön Motoru
     const testSig = extractSignature(previewImg);
     const rawScores = {};
     let totalScore = 0;
 
-    // Her sorun kategorisindeki tüm örnekler içinde EN YÜKSEK benzerliği alan örneğin puanını baz al
     for (const d of DEFECTS) {
-      const sigList = refFeaturesMap[d.id] || [];
-      if (sigList.length === 0) {
+      const items = refStore[d.id] || [];
+      if (items.length === 0) {
         rawScores[d.id] = 0;
         continue;
       }
       let bestScore = 0;
-      for (const refSig of sigList) {
-        const s = compareSignatures(refSig, testSig);
+      for (const item of items) {
+        const s = compareSignatures(item.sig, testSig);
         if (s > bestScore) bestScore = s;
       }
       rawScores[d.id] = bestScore;
