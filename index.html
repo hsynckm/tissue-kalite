@@ -98,7 +98,7 @@
 <body>
 <div class="container">
   <header>
-    <h1>Tissue Kalite Kontrol - Görsel Hata Teşhis Sistemi (v3.2 Fast)</h1>
+    <h1>Tissue Kalite Kontrol - Görsel Hata Teşhis Sistemi (v3.3 Free-Tier)</h1>
     <span id="engineStatus" class="status-badge">Referans fotoğraflar ve rehberler yükleniyor...</span>
   </header>
 
@@ -553,7 +553,7 @@
     renderBars({});
   });
 
-  // 20 saniye zaman aşımı korumalı ve hızlı Flash öncelikli Gemini AI motoru
+  // Ücretsiz katman (Free Tier) kotalı gerçek Flash modelleriyle analiz
   async function analyzeWithGemini(apiKey, testDataUrl) {
     const guideContext = DEFECTS.map(d => `- ${d.id} (${d.name}): ${d.guide.replace(/\s+/g, " ").slice(0, 220)}`).join("\n");
 
@@ -589,19 +589,19 @@ SADECE geçerli JSON döndür:
       }
     });
 
-    // Önce hızlı Flash modelleri dene, ardından Pro yedeğine bak
+    // Free-Tier açık hızlı Flash modelleri (Pro modelleri limit:0 olduğu için çıkarıldı)
     const models = [
-      "gemini-3.8-flash",
-      "gemini-3.8-flash-lite",
       "gemini-3.1-flash-lite-preview",
-      "gemini-3.1-pro-preview"
+      "gemini-3-flash-preview",
+      "gemini-2.5-flash",
+      "gemini-2.5-flash-lite"
     ];
     let lastError = "Bağlantı zaman aşımına uğradı.";
 
     for (const model of models) {
       topResult.textContent = `🤖 Gemini AI (${model}) görseli inceliyor...`;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 20000); // Max 20 sn bekle
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
 
       try {
         const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
