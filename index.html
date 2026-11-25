@@ -71,7 +71,7 @@
 <div class="container">
   <header>
     <h1>Tissue Kalite Kontrol - Görsel Hata Teşhis Sistemi</h1>
-    <span id="engineStatus" class="status-badge">Referans fotoğraflar yükleniyor...</span>
+    <span id="engineStatus" class="status-badge">Referans fotoğraflar ve rehberler yükleniyor...</span>
   </header>
 
   <div class="grid">
@@ -98,7 +98,7 @@
         Müdahale Rehberi Görüntülenen Sorun (Farklı ihtimal için buradan seçebilirsiniz):
       </label>
       <select id="defectSelect"></select>
-      <div id="guideText" class="guide-box"></div>
+      <div id="guideText" class="guide-box">Rehber yükleniyor...</div>
     </div>
   </div>
 </div>
@@ -109,37 +109,43 @@
       id: "su_izi",
       name: "1. Sorun (su_izi)",
       file: "1.jpg",
-      guide: "SU İZİ MÜDAHALE REHBERİ:\n• Elek gerginliğini kontrol edin, gevşek elek su izine yol açar.\n• Vakum kutusu vakum değerlerini ve elek temizleme duşlarını gözden geçirin.\n• Hamur kıvamı ve elek suyu drenaj ayarlarını kontrol edin."
+      txtFiles: ["su_izi.txt"],
+      guide: "su_izi.txt dosyası bulunamadı. Lütfen GitHub deposuna su_izi.txt dosyasını yükleyin."
     },
     {
       id: "blof",
       name: "2. Sorun (blöf)",
       file: "7.jpeg.jpg",
-      guide: "BLÖF MÜDAHALE REHBERİ:\n• Keçe ve Yankee silindiri arasındaki hava sıkışmasını kontrol edin.\n• Pres basıncını ve keçe geçirgenliğini (vakum/yıkama) kontrol edin.\n• Kağıt gerginliği (draw) ayarlarını dengeleyin."
+      txtFiles: ["blöf.txt", "blof.txt"],
+      guide: "blöf.txt dosyası bulunamadı. Lütfen GitHub deposuna blöf.txt dosyasını yükleyin."
     },
     {
       id: "boyuna_iz",
       name: "3. Sorun (boyuna_iz)",
       file: "9.jpg",
-      guide: "BOYUNA İZ MÜDAHALE REHBERİ:\n• Elek, keçe ve silindir yüzeylerinde çizik, yabancı madde veya birikinti olup olmadığını kontrol edin.\n• Doktor bıçaklarının (raspa) baskısını ve temizliğini kontrol edin.\n• Duş nozullarının tıkalı olup olmadığını inceleyin."
+      txtFiles: ["boyuna_iz.txt"],
+      guide: "boyuna_iz.txt dosyası bulunamadı. Lütfen GitHub deposuna boyuna_iz.txt dosyasını yükleyin."
     },
     {
       id: "broke_lekesi",
       name: "4. Sorun (broke_lekesi)",
       file: "3.jpg",
-      guide: "BROKE LEKESİ MÜDAHALE REHBERİ:\n• Hamur hazırlama ve elek sistemindeki temizlik/eleme ünitelerini kontrol edin.\n• Broke (kopuk) oranını ve öğütme derecesini gözden geçirin.\n• Sistemdeki birikinti ve slime oluşumuna karşı hat temizliği yapın."
+      txtFiles: ["broke_lekesi.txt"],
+      guide: "broke_lekesi.txt dosyası bulunamadı. Lütfen GitHub deposuna broke_lekesi.txt dosyasını yükleyin."
     },
     {
       id: "erime",
       name: "5. Sorun (erime)",
       file: "5.jpg",
-      guide: "ERİME MÜDAHALE REHBERİ:\n• Yankee silindiri buhar basıncını ve yüzey sıcaklığını kontrol edin.\n• Kaplama (coating) kimyasalı püskürtme oranını ve nozulları inceleyin.\n• Keçe nem oranını ve pres hattı su alma kapasitesini kontrol edin."
+      txtFiles: ["erime.txt"],
+      guide: "erime.txt dosyası bulunamadı. Lütfen GitHub deposuna erime.txt dosyasını yükleyin."
     },
     {
       id: "yigilma",
       name: "6. Sorun (yigilma)",
       file: "2.jpg",
-      guide: "YIGILMA MÜDAHALE REHBERİ:\n• Krepaj (creping) doktor bıçağını ve bıçak açısını kontrol edin, gerekirse bıçak değiştirin.\n• Yankee yüzey kaplaması (adhesive/release) dengesini gözden geçirin.\n• Sarıcı (reel) ve Yankee arasındaki hız farkını (çekme oranını) kontrol edin."
+      txtFiles: ["yigilma.txt", "yığılma.txt"],
+      guide: "yigilma.txt dosyası bulunamadı. Lütfen GitHub deposuna yigilma.txt dosyasını yükleyin."
     }
   ];
 
@@ -162,8 +168,7 @@
     opt.textContent = d.name;
     defectSelect.appendChild(opt);
   });
-  defectSelect.value = "yigilma";
-  guideText.textContent = DEFECTS.find(d => d.id === "yigilma").guide;
+  defectSelect.value = "su_izi";
 
   defectSelect.addEventListener("change", () => {
     const found = DEFECTS.find(d => d.id === defectSelect.value);
@@ -276,20 +281,53 @@
     }
   }
 
-  async function initRefs() {
-    let loadedCount = 0;
+  async function loadGuideTexts() {
+    let txtCount = 0;
+    for (const d of DEFECTS) {
+      for (const fname of d.txtFiles) {
+        const urls = [
+          "./" + encodeURIComponent(fname) + "?v=" + Date.now(),
+          "https://raw.githubusercontent.com/hsynckm/tissue-kalite/main/" + encodeURIComponent(fname)
+        ];
+        let loaded = false;
+        for (const u of urls) {
+          try {
+            const resp = await fetch(u);
+            if (resp.ok) {
+              const text = await resp.text();
+              if (text && text.trim().length > 0) {
+                d.guide = text.trim();
+                txtCount++;
+                loaded = true;
+                break;
+              }
+            }
+          } catch (e) {}
+        }
+        if (loaded) break;
+      }
+    }
+    const current = DEFECTS.find(d => d.id === defectSelect.value);
+    guideText.textContent = current ? current.guide : "";
+    return txtCount;
+  }
+
+  async function initSystem() {
+    let imgCount = 0;
     for (const d of DEFECTS) {
       try {
         const img = await loadRefImage(d.file);
         refFeatures[d.id] = extractSignature(img);
-        loadedCount++;
+        imgCount++;
       } catch (e) {
-        console.warn("Referans yüklenemedi:", d.file);
+        console.warn("Referans resim yüklenemedi:", d.file);
       }
     }
 
-    if (loadedCount > 0) {
-      engineStatus.textContent = `Sistem Hazır (${loadedCount}/6 Referans Yüklendi)`;
+    const txtCount = await loadGuideTexts();
+
+    if (imgCount > 0) {
+      engineStatus.textContent = `Sistem Hazır (${imgCount}/6 Fotoğraf, ${txtCount}/6 Rehber Yüklendi)`;
       engineStatus.classList.add("ready");
     } else {
       engineStatus.textContent = "Uyarı: Referans resimleri yüklenemedi, dosya yolunu kontrol edin.";
@@ -327,7 +365,7 @@
     }
 
     if (Object.keys(refFeatures).length === 0) {
-      await initRefs();
+      await initSystem();
     }
 
     if (Object.keys(refFeatures).length === 0) {
@@ -369,7 +407,7 @@
     guideText.textContent = winner.guide;
   });
 
-  window.addEventListener("DOMContentLoaded", initRefs);
+  window.addEventListener("DOMContentLoaded", initSystem);
 </script>
 </body>
 </html>
