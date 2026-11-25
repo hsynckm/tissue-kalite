@@ -117,25 +117,47 @@
     .wrong-picker {
       display: none;
       margin-top: 10px;
-      padding-top: 10px;
-      border-top: 1px dashed rgba(234, 179, 8, 0.35);
+      padding: 10px;
+      background: rgba(220, 38, 38, 0.1);
+      border: 1px solid rgba(220, 38, 38, 0.4);
+      border-radius: 8px;
+    }
+    .wrong-picker-warn {
+      font-size: 0.82rem;
+      color: #fecaca;
+      margin-bottom: 7px;
+      line-height: 1.4;
     }
     .wrong-picker-row {
       display: flex;
       gap: 8px;
       margin-top: 6px;
+      flex-wrap: wrap;
     }
     .wrong-picker-row select {
       flex: 1;
+      min-width: 190px;
       padding: 8px;
       font-size: 0.88rem;
     }
     .wrong-picker-row button {
-      flex: 0.5;
+      flex: 0.45;
+      min-width: 90px;
       padding: 8px;
       background: var(--primary);
       color: #fff;
       font-size: 0.86rem;
+    }
+    #otherNoteInput {
+      display: none;
+      width: 100%;
+      margin-top: 8px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 0.85rem;
     }
     .fb-saved-msg {
       display: none;
@@ -186,7 +208,7 @@
       display: flex;
       flex-direction: column;
       gap: 6px;
-      max-height: 190px;
+      max-height: 200px;
       overflow-y: auto;
     }
     .pool-item {
@@ -223,7 +245,7 @@
 <body>
 <div class="container">
   <header>
-    <h1>Tissue Kalite Kontrol - Görsel Hata Teşhis Sistemi (v3.4)</h1>
+    <h1>Tissue Kalite Kontrol - Görsel Hata Teşhis Sistemi (v3.5)</h1>
     <span id="engineStatus" class="status-badge">Referans fotoğraflar ve rehberler yükleniyor...</span>
   </header>
 
@@ -272,11 +294,14 @@
         </div>
 
         <div id="wrongPicker" class="wrong-picker">
-          <label style="font-size:0.82rem; color:#fde047;">Kesin olarak doğru olan sorun hangisiydi?</label>
+          <div class="wrong-picker-warn">
+            🎯 <b>Eğer gerçek sorunu kesin olarak biliyorsanız</b> aşağıdan seçin (kesin emin değilseniz lütfen işaretlemeyin):
+          </div>
           <div class="wrong-picker-row">
             <select id="correctDefectSelect"></select>
             <button type="button" id="saveCorrectionBtn">Kaydet</button>
           </div>
+          <input type="text" id="otherNoteInput" placeholder="İsteğe bağlı: Bu yeni hataya verdiğiniz isim/not (örn. keçe izi, kenar yırtığı)" />
         </div>
         <div id="fbSavedMsg" class="fb-saved-msg"></div>
       </div>
@@ -313,7 +338,6 @@
 
   // 0-30 arası Yönetici Kesin Referansları
   const refStore = {};
-  // Kesin olmayan saha geri bildirimleri (localStorage)
   const FIELD_STORAGE_KEY = "tissue_field_feedback_v1";
   let fieldFeedbackList = [];
 
@@ -325,6 +349,7 @@
 
   const defectSelect = document.getElementById("defectSelect");
   const correctDefectSelect = document.getElementById("correctDefectSelect");
+  const otherNoteInput = document.getElementById("otherNoteInput");
   const guideText = document.getElementById("guideText");
   const barsContainer = document.getElementById("barsContainer");
   const fileInput = document.getElementById("fileInput");
@@ -363,17 +388,42 @@
     opt.value = d.id;
     opt.textContent = d.name;
     defectSelect.appendChild(opt);
-
-    const opt2 = document.createElement("option");
-    opt2.value = d.id;
-    opt2.textContent = d.name;
-    correctDefectSelect.appendChild(opt2);
   });
   defectSelect.value = "su_izi";
 
   defectSelect.addEventListener("change", () => {
     const found = DEFECTS.find(d => d.id === defectSelect.value);
     guideText.textContent = found ? found.guide : "";
+  });
+
+  // Yanlış seçildiğinde: AI'nın yanlış bulduğu sonucu çıkar, kalan 5 seçenek + "Diğer" seçeneğini doldur
+  function populateAlternativeChoices(excludedDefectId) {
+    correctDefectSelect.innerHTML = "";
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "-- Kesin bildiğiniz sorunu seçin --";
+    correctDefectSelect.appendChild(placeholder);
+
+    DEFECTS.forEach(d => {
+      if (d.id === excludedDefectId) return;
+      const opt = document.createElement("option");
+      opt.value = d.id;
+      opt.textContent = d.name;
+      correctDefectSelect.appendChild(opt);
+    });
+
+    const otherOpt = document.createElement("option");
+    otherOpt.value = "diger_sorun";
+    otherOpt.textContent = "🆕 Diğer (Bu 6 Sorundan Hariç Yeni Bir Hata)";
+    correctDefectSelect.appendChild(otherOpt);
+
+    correctDefectSelect.value = "";
+    otherNoteInput.value = "";
+    otherNoteInput.style.display = "none";
+  }
+
+  correctDefectSelect.addEventListener("change", () => {
+    otherNoteInput.style.display = (correctDefectSelect.value === "diger_sorun") ? "block" : "none";
   });
 
   function loadFieldFeedback() {
@@ -388,7 +438,6 @@
 
   function saveFieldFeedbackList() {
     try {
-      // Hafıza taşmasını önlemek için en güncel 25 saha kaydını tut
       if (fieldFeedbackList.length > 25) {
         fieldFeedbackList = fieldFeedbackList.slice(fieldFeedbackList.length - 25);
       }
@@ -407,7 +456,11 @@
 
     [...fieldFeedbackList].reverse().forEach(item => {
       const defObj = DEFECTS.find(d => d.id === item.finalDefectId);
-      const defName = defObj ? defObj.name : item.finalDefectId;
+      const isOther = item.finalDefectId === "diger_sorun";
+      const defName = isOther
+        ? `🆕 Diğer Sorun${item.customNote ? " (" + item.customNote + ")" : ""}`
+        : (defObj ? defObj.name : item.finalDefectId);
+
       const badge = item.status === "confirmed"
         ? "✅ Doğrulandı (Saha)"
         : item.status === "corrected"
@@ -424,14 +477,15 @@
         </div>
       `;
 
-      if (item.status !== "unsure" && defObj) {
+      if (item.status !== "unsure" && (defObj || isOther)) {
         const dlBtn = document.createElement("button");
         dlBtn.type = "button";
         dlBtn.className = "pool-dl-btn";
-        const nextNum = Math.min(30, (refStore[defObj.id]?.length || 0) + 1);
-        const suggestedFile = `${defObj.prefix}_${nextNum}.jpg`;
+        const suggestedFile = isOther
+          ? `diger_yeni_sorun_${Date.now().toString().slice(-4)}.jpg`
+          : `${defObj.prefix}_${Math.min(30, (refStore[defObj.id]?.length || 0) + 1)}.jpg`;
         dlBtn.textContent = `⬇️ ${suggestedFile}`;
-        dlBtn.title = "Yönetici onayıyla 0-30 kesin arşive eklemek için indir";
+        dlBtn.title = "Yönetici onayıyla arşive almak için indir";
         dlBtn.onclick = () => {
           const a = document.createElement("a");
           a.href = item.thumbDataUrl;
@@ -818,7 +872,7 @@
       predictedDefectId: winnerId,
       thumbDataUrl
     };
-    correctDefectSelect.value = winnerId;
+    populateAlternativeChoices(winnerId);
     wrongPicker.style.display = "none";
     fbSavedMsg.style.display = "none";
     feedbackBox.style.display = "block";
@@ -840,6 +894,8 @@
   });
 
   fbNoBtn.addEventListener("click", () => {
+    if (!lastAnalysisContext) return;
+    populateAlternativeChoices(lastAnalysisContext.predictedDefectId);
     wrongPicker.style.display = "block";
     fbSavedMsg.style.display = "none";
   });
@@ -847,16 +903,24 @@
   saveCorrectionBtn.addEventListener("click", () => {
     if (!lastAnalysisContext) return;
     const chosenId = correctDefectSelect.value;
+    if (!chosenId) {
+      alert("Lütfen kesin olarak bildiğiniz sorunu listeden seçin (emin değilseniz 'Bilmiyorum' butonunu kullanın).");
+      return;
+    }
+    const customNote = (chosenId === "diger_sorun") ? otherNoteInput.value.trim() : "";
     fieldFeedbackList.push({
       status: "corrected",
       predictedDefectId: lastAnalysisContext.predictedDefectId,
       finalDefectId: chosenId,
+      customNote,
       thumbDataUrl: lastAnalysisContext.thumbDataUrl,
       dateStr: new Date().toLocaleString("tr-TR")
     });
     saveFieldFeedbackList();
     wrongPicker.style.display = "none";
-    fbSavedMsg.textContent = "🔄 Düzeltmeniz kaydedildi! Yapay zeka sonraki analizlerde bu saha uyarısını dikkate alacak.";
+    fbSavedMsg.textContent = chosenId === "diger_sorun"
+      ? "🆕 'Diğer (Yeni Sorun)' kaydı oluşturuldu! Yapay zeka sonraki analizlerde bu yeni hatayı 6 kategoriden ayırt etmek için dikkate alacak."
+      : "🔄 Düzeltmeniz kaydedildi! Yapay zeka sonraki analizlerde bu saha uyarısını dikkate alacak.";
     fbSavedMsg.style.display = "block";
   });
 
@@ -884,7 +948,7 @@
 Aşağıdaki 6 hata kategorisinin teknik tanımlarını ve YÖNETİCİ KESİN REFERANS fotoğraflarını inceleyip en sondaki TEST FOTOĞRAFINI teşhis et:
 ${guideContext}
 
-Yüzdeleri toplamı 100 olacak şekilde dağıt ve 1-2 cümlelik net teknik gerekçe yaz.
+Yüzdeleri toplamı 100 olacak şekilde dağıt ve 1-2 cümlelik net teknik gerekçe yaz. Eğer görsel bu 6 kategoriden hiçbirine tam uymuyorsa veya 'Diğer' olarak işaretlenmiş saha vakalarına benziyorsa bunu gerekçede mutlaka belirt.
 SADECE geçerli JSON döndür:
 {"scores":{"su_izi":0,"blof":0,"boyuna_iz":0,"broke_lekesi":0,"erime":0,"yigilma":0},"reason":"Teknik açıklama"}`
       }
@@ -899,16 +963,21 @@ SADECE geçerli JSON döndür:
       });
     }
 
-    // 2. Katman: Kesin Olmayan Saha Ön Değerlendirmeleri (en son 3 onaylı/düzeltilmiş vaka)
-    const validFieldExamples = fieldFeedbackList.filter(x => x.status === "confirmed" || x.status === "corrected").slice(-3);
+    // 2. Katman: Kesin Olmayan Saha Ön Değerlendirmeleri (en son 4 onaylı/düzeltilmiş vaka)
+    const validFieldExamples = fieldFeedbackList.filter(x => x.status === "confirmed" || x.status === "corrected").slice(-4);
     if (validFieldExamples.length > 0) {
       parts.push({
         text: "EK BİLGİ — DAHA ÖNCE SAHADA DEĞERLENDİRİLMİŞ ÖRNEKLER (Kesin referans değildir, yardımcı saha ipucu olarak dikkate al):"
       });
       validFieldExamples.forEach((ex, i) => {
-        const note = ex.status === "corrected"
-          ? `Saha Geri Bildirimi #${i + 1}: İlk tahminde '${ex.predictedDefectId}' sanıldı ancak operatör tarafından '${ex.finalDefectId}' olarak düzeltildi.`
-          : `Saha Geri Bildirimi #${i + 1}: Operatör tarafından '${ex.finalDefectId}' olarak değerlendirildi.`;
+        let note = "";
+        if (ex.finalDefectId === "diger_sorun") {
+          note = `Saha Geri Bildirimi #${i + 1}: İlk tahminde '${ex.predictedDefectId}' sanıldı ancak operatör bunun 6 ana kategoriden hariç YENİ/DİĞER bir hata olduğunu belirtti${ex.customNote ? " (" + ex.customNote + ")" : ""}.`;
+        } else if (ex.status === "corrected") {
+          note = `Saha Geri Bildirimi #${i + 1}: İlk tahminde '${ex.predictedDefectId}' sanıldı ancak operatör tarafından '${ex.finalDefectId}' olarak düzeltildi.`;
+        } else {
+          note = `Saha Geri Bildirimi #${i + 1}: Operatör tarafından '${ex.finalDefectId}' olarak değerlendirildi.`;
+        }
         parts.push({ text: note });
         parts.push({ inline_data: { mime_type: "image/jpeg", data: ex.thumbDataUrl.split(",")[1] } });
       });
