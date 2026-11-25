@@ -104,52 +104,60 @@
 </div>
 
 <script>
+  // Her sorun için ana dosya + otomatik taranacak ek örnek isimleri (_2.jpg ... _10.jpg)
   const DEFECTS = [
     {
       id: "su_izi",
       name: "1. Sorun (su_izi)",
-      file: "1.jpg",
+      prefix: "su_izi",
+      baseFiles: ["1.jpg"],
       txtFiles: ["su_izi.txt"],
-      guide: "su_izi.txt dosyası bulunamadı. Lütfen GitHub deposuna su_izi.txt dosyasını yükleyin."
+      guide: "su_izi.txt dosyası bulunamadı."
     },
     {
       id: "blof",
       name: "2. Sorun (blöf)",
-      file: "7.jpeg.jpg",
-      txtFiles: ["blöf.txt", "blof.txt"],
-      guide: "blöf.txt dosyası bulunamadı. Lütfen GitHub deposuna blöf.txt dosyasını yükleyin."
+      prefix: "blof",
+      baseFiles: ["7.jpeg.jpg"],
+      txtFiles: ["blof.txt", "blöf.txt"],
+      guide: "blof.txt dosyası bulunamadı."
     },
     {
       id: "boyuna_iz",
       name: "3. Sorun (boyuna_iz)",
-      file: "9.jpg",
+      prefix: "boyuna_iz",
+      baseFiles: ["9.jpg"],
       txtFiles: ["boyuna_iz.txt"],
-      guide: "boyuna_iz.txt dosyası bulunamadı. Lütfen GitHub deposuna boyuna_iz.txt dosyasını yükleyin."
+      guide: "boyuna_iz.txt dosyası bulunamadı."
     },
     {
       id: "broke_lekesi",
       name: "4. Sorun (broke_lekesi)",
-      file: "3.jpg",
+      prefix: "broke_lekesi",
+      baseFiles: ["3.jpg"],
       txtFiles: ["broke_lekesi.txt"],
-      guide: "broke_lekesi.txt dosyası bulunamadı. Lütfen GitHub deposuna broke_lekesi.txt dosyasını yükleyin."
+      guide: "broke_lekesi.txt dosyası bulunamadı."
     },
     {
       id: "erime",
       name: "5. Sorun (erime)",
-      file: "5.jpg",
+      prefix: "erime",
+      baseFiles: ["5.jpg"],
       txtFiles: ["erime.txt"],
-      guide: "erime.txt dosyası bulunamadı. Lütfen GitHub deposuna erime.txt dosyasını yükleyin."
+      guide: "erime.txt dosyası bulunamadı."
     },
     {
       id: "yigilma",
       name: "6. Sorun (yigilma)",
-      file: "2.jpg",
+      prefix: "yigilma",
+      baseFiles: ["2.jpg"],
       txtFiles: ["yigilma.txt", "yığılma.txt"],
-      guide: "yigilma.txt dosyası bulunamadı. Lütfen GitHub deposuna yigilma.txt dosyasını yükleyin."
+      guide: "yigilma.txt dosyası bulunamadı."
     }
   ];
 
-  const refFeatures = {};
+  // Her sorun için birden fazla referans imzası tutulur: { su_izi: [sig1, sig2, ...], ... }
+  const refFeaturesMap = {};
   let imageReady = false;
 
   const defectSelect = document.getElementById("defectSelect");
@@ -163,6 +171,7 @@
   const engineStatus = document.getElementById("engineStatus");
 
   DEFECTS.forEach(d => {
+    refFeaturesMap[d.id] = [];
     const opt = document.createElement("option");
     opt.value = d.id;
     opt.textContent = d.name;
@@ -175,16 +184,25 @@
     guideText.textContent = found ? found.guide : "";
   });
 
+  function updateDropdownLabels() {
+    Array.from(defectSelect.options).forEach(opt => {
+      const d = DEFECTS.find(item => item.id === opt.value);
+      const count = refFeaturesMap[d.id] ? refFeaturesMap[d.id].length : 0;
+      opt.textContent = `${d.name} [${count} Örnek]`;
+    });
+  }
+
   function renderBars(scoresMap) {
     barsContainer.innerHTML = "";
     const sorted = [...DEFECTS].sort((a, b) => (scoresMap[b.id] || 0) - (scoresMap[a.id] || 0));
     sorted.forEach((d, idx) => {
       const val = scoresMap[d.id] || 0;
+      const count = refFeaturesMap[d.id] ? refFeaturesMap[d.id].length : 0;
       const row = document.createElement("div");
       row.className = "bar-row";
       row.innerHTML = `
         <div class="bar-label">
-          <span>${d.name}</span>
+          <span>${d.name} <small style="color:var(--muted)">(${count} örnek)</small></span>
           <strong>%${val.toFixed(1)}</strong>
         </div>
         <div class="bar-bg">
@@ -268,12 +286,12 @@
       const img = new Image();
       if (useCors) img.crossOrigin = "anonymous";
       img.onload = () => resolve(img);
-      img.onerror = () => reject(new Error("Yüklenemedi: " + url));
+      img.onerror = () => reject(new Error("Yüklenemedi"));
       img.src = url;
     });
   }
 
-  async function loadRefImage(fileName) {
+  async function tryLoadRefImage(fileName) {
     try {
       return await loadImageSingle("./" + fileName, false);
     } catch (e1) {
@@ -313,21 +331,37 @@
   }
 
   async function initSystem() {
-    let imgCount = 0;
+    let totalImages = 0;
+
+    // Tüm sorunlar için hem ana dosyayı hem de _2.jpg ... _10.jpg ek örneklerini paralel tara
+    const tasks = [];
     for (const d of DEFECTS) {
-      try {
-        const img = await loadRefImage(d.file);
-        refFeatures[d.id] = extractSignature(img);
-        imgCount++;
-      } catch (e) {
-        console.warn("Referans resim yüklenemedi:", d.file);
+      refFeaturesMap[d.id] = [];
+      const candidates = [...d.baseFiles];
+      for (let n = 2; n <= 10; n++) {
+        candidates.push(`${d.prefix}_${n}.jpg`);
+      }
+
+      for (const fname of candidates) {
+        tasks.push(
+          tryLoadRefImage(fname)
+            .then(img => {
+              refFeaturesMap[d.id].push(extractSignature(img));
+              totalImages++;
+            })
+            .catch(() => {}) // Yüklenmemiş ek numaraları sessizce atla
+        );
       }
     }
 
+    await Promise.all(tasks);
     const txtCount = await loadGuideTexts();
 
-    if (imgCount > 0) {
-      engineStatus.textContent = `Sistem Hazır (${imgCount}/6 Fotoğraf, ${txtCount}/6 Rehber Yüklendi)`;
+    updateDropdownLabels();
+    renderBars({});
+
+    if (totalImages > 0) {
+      engineStatus.textContent = `Sistem Hazır (${totalImages} Örnek Fotoğraf, ${txtCount}/6 Rehber Yüklendi)`;
       engineStatus.classList.add("ready");
     } else {
       engineStatus.textContent = "Uyarı: Referans resimleri yüklenemedi, dosya yolunu kontrol edin.";
@@ -364,28 +398,34 @@
       return;
     }
 
-    if (Object.keys(refFeatures).length === 0) {
+    const loadedTotal = Object.values(refFeaturesMap).reduce((acc, arr) => acc + arr.length, 0);
+    if (loadedTotal === 0) {
       await initSystem();
-    }
-
-    if (Object.keys(refFeatures).length === 0) {
-      topResult.textContent = "Hata: Referans fotoğraflara erişilemedi.";
-      return;
     }
 
     const testSig = extractSignature(previewImg);
     const rawScores = {};
     let totalScore = 0;
 
+    // Her sorun kategorisindeki tüm örnekler içinde EN YÜKSEK benzerliği alan örneğin puanını baz al
     for (const d of DEFECTS) {
-      const refSig = refFeatures[d.id];
-      if (!refSig) {
+      const sigList = refFeaturesMap[d.id] || [];
+      if (sigList.length === 0) {
         rawScores[d.id] = 0;
         continue;
       }
-      const s = compareSignatures(refSig, testSig);
-      rawScores[d.id] = s;
-      totalScore += s;
+      let bestScore = 0;
+      for (const refSig of sigList) {
+        const s = compareSignatures(refSig, testSig);
+        if (s > bestScore) bestScore = s;
+      }
+      rawScores[d.id] = bestScore;
+      totalScore += bestScore;
+    }
+
+    if (totalScore === 0) {
+      topResult.textContent = "Hata: Referans fotoğraflara erişilemedi.";
+      return;
     }
 
     const percentages = {};
