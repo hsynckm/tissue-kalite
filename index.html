@@ -489,6 +489,7 @@
       const candidates = [...d.baseFiles];
       for (let n = 1; n <= 30; n++) candidates.push(`${d.prefix}_${n}.jpg`);
 
+
       for (const fname of candidates) {
         tasks.push(
           fetchImageAsDataUrl(fname)
