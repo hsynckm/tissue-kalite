@@ -79,6 +79,72 @@
     .ai-note.warn {
       background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.45); color: #fecaca;
     }
+
+    /* Geri Bildirim Kutusu */
+    .feedback-box {
+      display: none;
+      background: rgba(234, 179, 8, 0.08);
+      border: 1px solid rgba(234, 179, 8, 0.45);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+    .feedback-warn {
+      font-size: 0.84rem;
+      color: #fef08a;
+      margin-bottom: 10px;
+      line-height: 1.45;
+    }
+    .feedback-btns {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .fb-btn {
+      padding: 9px 10px;
+      font-size: 0.86rem;
+      border-radius: 7px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .fb-yes { background: #16a34a; color: #fff; }
+    .fb-yes:hover { background: #15803d; }
+    .fb-no { background: #dc2626; color: #fff; }
+    .fb-no:hover { background: #b91c1c; }
+    .fb-unsure { background: #475569; color: #f1f5f9; }
+    .fb-unsure:hover { background: #334155; }
+
+    .wrong-picker {
+      display: none;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed rgba(234, 179, 8, 0.35);
+    }
+    .wrong-picker-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .wrong-picker-row select {
+      flex: 1;
+      padding: 8px;
+      font-size: 0.88rem;
+    }
+    .wrong-picker-row button {
+      flex: 0.5;
+      padding: 8px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.86rem;
+    }
+    .fb-saved-msg {
+      display: none;
+      margin-top: 8px;
+      font-size: 0.85rem;
+      color: #86efac;
+      font-weight: 600;
+    }
+
     .bar-row { margin-bottom: 9px; }
     .bar-label { display: flex; justify-content: space-between; font-size: 0.88rem; margin-bottom: 3px; }
     .bar-bg { background: #0f172a; height: 9px; border-radius: 6px; overflow: hidden; }
@@ -91,14 +157,73 @@
     }
     .guide-box {
       margin-top: 10px; background: #0f172a; border: 1px solid var(--border);
-      border-radius: 8px; padding: 14px; min-height: 150px; white-space: pre-wrap; font-size: 0.94rem;
+      border-radius: 8px; padding: 14px; min-height: 130px; white-space: pre-wrap; font-size: 0.94rem;
+    }
+
+    /* Saha Ön Değerlendirme Havuzu */
+    .field-pool {
+      margin-top: 16px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .field-pool-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 0.86rem;
+      color: var(--muted);
+    }
+    .pool-clear-btn {
+      flex: none;
+      padding: 4px 9px;
+      font-size: 0.78rem;
+      background: #334155;
+      color: #cbd5e1;
+      border-radius: 6px;
+    }
+    .pool-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 190px;
+      overflow-y: auto;
+    }
+    .pool-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 6px 8px;
+      font-size: 0.8rem;
+    }
+    .pool-item img {
+      width: 38px;
+      height: 38px;
+      object-fit: cover;
+      border-radius: 5px;
+      border: 1px solid var(--border);
+    }
+    .pool-item-info {
+      flex: 1;
+      line-height: 1.35;
+    }
+    .pool-dl-btn {
+      flex: none;
+      padding: 5px 8px;
+      font-size: 0.76rem;
+      background: #0284c7;
+      color: #fff;
+      border-radius: 5px;
     }
   </style>
 </head>
 <body>
 <div class="container">
   <header>
-    <h1>Tissue Kalite Kontrol - Görsel Hata Teşhis Sistemi (v3.3 Free-Tier)</h1>
+    <h1>Tissue Kalite Kontrol - Görsel Hata Teşhis Sistemi (v3.4)</h1>
     <span id="engineStatus" class="status-badge">Referans fotoğraflar ve rehberler yükleniyor...</span>
   </header>
 
@@ -134,6 +259,28 @@
       <h2>2. Analiz ve Oran Sonuçları</h2>
       <div id="topResult" class="top-result">Henüz analiz yapılmadı.</div>
       <div id="aiReasonBox" class="ai-note"></div>
+
+      <!-- Operatör Geri Bildirim & Öğrenme Kutusu -->
+      <div id="feedbackBox" class="feedback-box">
+        <div class="feedback-warn">
+          ⚠️ <b>Sisteme Katkı Uyarısı:</b> Yapay zekanın kendini doğru geliştirebilmesi için <b>lütfen yalnızca teşhisten gerçekten eminseniz</b> "Doğru" veya "Yanlış" yanıtını verin. Emin değilseniz "Bilmiyorum" seçeneğini kullanın.
+        </div>
+        <div class="feedback-btns">
+          <button type="button" id="fbYesBtn" class="fb-btn fb-yes">✅ Doğru (Eminim)</button>
+          <button type="button" id="fbNoBtn" class="fb-btn fb-no">❌ Yanlış (Eminim)</button>
+          <button type="button" id="fbUnsureBtn" class="fb-btn fb-unsure">🤷 Bilmiyorum</button>
+        </div>
+
+        <div id="wrongPicker" class="wrong-picker">
+          <label style="font-size:0.82rem; color:#fde047;">Kesin olarak doğru olan sorun hangisiydi?</label>
+          <div class="wrong-picker-row">
+            <select id="correctDefectSelect"></select>
+            <button type="button" id="saveCorrectionBtn">Kaydet</button>
+          </div>
+        </div>
+        <div id="fbSavedMsg" class="fb-saved-msg"></div>
+      </div>
+
       <div id="barsContainer"></div>
 
       <label class="select-label" for="defectSelect">
@@ -141,6 +288,15 @@
       </label>
       <select id="defectSelect"></select>
       <div id="guideText" class="guide-box">Rehber yükleniyor...</div>
+
+      <!-- Kesin Olmayan Saha Ön Değerlendirme Havuzu (0-30 Arşivinden Ayrı Tutulur) -->
+      <div class="field-pool">
+        <div class="field-pool-header">
+          <span id="poolCountLabel">📋 Saha Ön Değerlendirme Havuzu (0 kayıt — 0-30 arşivinden ayrı)</span>
+          <button type="button" id="clearPoolBtn" class="pool-clear-btn">Havuzu Temizle</button>
+        </div>
+        <div id="poolList" class="pool-list"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -155,13 +311,20 @@
     { id: "yigilma", name: "6. Sorun (yigilma)", prefix: "yigilma", baseFiles: ["2.jpg"], txtFiles: ["yigilma.txt", "yığılma.txt"], guide: "yigilma.txt dosyası bulunamadı." }
   ];
 
+  // 0-30 arası Yönetici Kesin Referansları
   const refStore = {};
+  // Kesin olmayan saha geri bildirimleri (localStorage)
+  const FIELD_STORAGE_KEY = "tissue_field_feedback_v1";
+  let fieldFeedbackList = [];
+
   let loadedTestImg = null;
   let selection = null;
   let isDragging = false;
   let dragStart = null;
+  let lastAnalysisContext = null;
 
   const defectSelect = document.getElementById("defectSelect");
+  const correctDefectSelect = document.getElementById("correctDefectSelect");
   const guideText = document.getElementById("guideText");
   const barsContainer = document.getElementById("barsContainer");
   const fileInput = document.getElementById("fileInput");
@@ -177,6 +340,17 @@
   const engineStatus = document.getElementById("engineStatus");
   const apiKeyInput = document.getElementById("apiKeyInput");
 
+  const feedbackBox = document.getElementById("feedbackBox");
+  const fbYesBtn = document.getElementById("fbYesBtn");
+  const fbNoBtn = document.getElementById("fbNoBtn");
+  const fbUnsureBtn = document.getElementById("fbUnsureBtn");
+  const wrongPicker = document.getElementById("wrongPicker");
+  const saveCorrectionBtn = document.getElementById("saveCorrectionBtn");
+  const fbSavedMsg = document.getElementById("fbSavedMsg");
+  const poolCountLabel = document.getElementById("poolCountLabel");
+  const poolList = document.getElementById("poolList");
+  const clearPoolBtn = document.getElementById("clearPoolBtn");
+
   const savedKey = localStorage.getItem("gemini_tissue_key_v2");
   if (savedKey) apiKeyInput.value = savedKey;
   apiKeyInput.addEventListener("input", () => {
@@ -189,6 +363,11 @@
     opt.value = d.id;
     opt.textContent = d.name;
     defectSelect.appendChild(opt);
+
+    const opt2 = document.createElement("option");
+    opt2.value = d.id;
+    opt2.textContent = d.name;
+    correctDefectSelect.appendChild(opt2);
   });
   defectSelect.value = "su_izi";
 
@@ -197,11 +376,86 @@
     guideText.textContent = found ? found.guide : "";
   });
 
+  function loadFieldFeedback() {
+    try {
+      const raw = localStorage.getItem(FIELD_STORAGE_KEY);
+      fieldFeedbackList = raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      fieldFeedbackList = [];
+    }
+    renderFieldPool();
+  }
+
+  function saveFieldFeedbackList() {
+    try {
+      // Hafıza taşmasını önlemek için en güncel 25 saha kaydını tut
+      if (fieldFeedbackList.length > 25) {
+        fieldFeedbackList = fieldFeedbackList.slice(fieldFeedbackList.length - 25);
+      }
+      localStorage.setItem(FIELD_STORAGE_KEY, JSON.stringify(fieldFeedbackList));
+    } catch (e) {}
+    renderFieldPool();
+  }
+
+  function renderFieldPool() {
+    poolCountLabel.textContent = `📋 Saha Ön Değerlendirme Havuzu (${fieldFeedbackList.length} kayıt — 0-30 arşivinden ayrı)`;
+    poolList.innerHTML = "";
+    if (fieldFeedbackList.length === 0) {
+      poolList.innerHTML = `<div style="font-size:0.78rem; color:var(--muted);">Henüz saha geri bildirimi kaydedilmedi.</div>`;
+      return;
+    }
+
+    [...fieldFeedbackList].reverse().forEach(item => {
+      const defObj = DEFECTS.find(d => d.id === item.finalDefectId);
+      const defName = defObj ? defObj.name : item.finalDefectId;
+      const badge = item.status === "confirmed"
+        ? "✅ Doğrulandı (Saha)"
+        : item.status === "corrected"
+          ? `🔄 Düzeltildi (AI: ${item.predictedDefectId})`
+          : "🤷 Kararsız / İnceleme Bekliyor";
+
+      const div = document.createElement("div");
+      div.className = "pool-item";
+      div.innerHTML = `
+        <img src="${item.thumbDataUrl}" alt="vaka" />
+        <div class="pool-item-info">
+          <div><b>${item.status === "unsure" ? "Belirsiz Vaka" : defName}</b> — <span style="color:#fde047;">${badge}</span></div>
+          <div style="color:var(--muted); font-size:0.74rem;">${item.dateStr} • Kesin referans değildir</div>
+        </div>
+      `;
+
+      if (item.status !== "unsure" && defObj) {
+        const dlBtn = document.createElement("button");
+        dlBtn.type = "button";
+        dlBtn.className = "pool-dl-btn";
+        const nextNum = Math.min(30, (refStore[defObj.id]?.length || 0) + 1);
+        const suggestedFile = `${defObj.prefix}_${nextNum}.jpg`;
+        dlBtn.textContent = `⬇️ ${suggestedFile}`;
+        dlBtn.title = "Yönetici onayıyla 0-30 kesin arşive eklemek için indir";
+        dlBtn.onclick = () => {
+          const a = document.createElement("a");
+          a.href = item.thumbDataUrl;
+          a.download = suggestedFile;
+          a.click();
+        };
+        div.appendChild(dlBtn);
+      }
+
+      poolList.appendChild(div);
+    });
+  }
+
+  clearPoolBtn.addEventListener("click", () => {
+    fieldFeedbackList = [];
+    localStorage.removeItem(FIELD_STORAGE_KEY);
+    renderFieldPool();
+  });
+
   function updateDropdownLabels() {
     Array.from(defectSelect.options).forEach(opt => {
       const d = DEFECTS.find(item => item.id === opt.value);
       const count = refStore[d.id] ? refStore[d.id].length : 0;
-      opt.textContent = `${d.name} [${count} Örnek]`;
+      opt.textContent = `${d.name} [${count} Kesin Referans]`;
     });
   }
 
@@ -215,7 +469,7 @@
       row.className = "bar-row";
       row.innerHTML = `
         <div class="bar-label">
-          <span>${d.name} <small style="color:var(--muted)">(${count} örnek)</small></span>
+          <span>${d.name} <small style="color:var(--muted)">(${count} kesin)</small></span>
           <strong>%${val.toFixed(1)}</strong>
         </div>
         <div class="bar-bg">
@@ -480,15 +734,16 @@
     return txtCount;
   }
 
+  // 0-30 Arası Yönetici Kesin Referanslarını Yükle
   async function initSystem() {
+    loadFieldFeedback();
     let totalImages = 0;
     const tasks = [];
 
     for (const d of DEFECTS) {
       refStore[d.id] = [];
       const candidates = [...d.baseFiles];
-      for (let n = 1; n <= 30; n++) candidates.push(`${d.prefix}_${n}.jpg`);
-
+      for (let n = 0; n <= 30; n++) candidates.push(`${d.prefix}_${n}.jpg`);
 
       for (const fname of candidates) {
         tasks.push(
@@ -512,7 +767,7 @@
     renderBars({});
 
     if (totalImages > 0) {
-      engineStatus.textContent = `Sistem Hazır (${totalImages} Örnek Fotoğraf, ${txtCount}/6 Rehber Yüklendi)`;
+      engineStatus.textContent = `Sistem Hazır (${totalImages} Kesin Referans [0-30], ${txtCount}/6 Rehber Yüklendi)`;
       engineStatus.classList.add("ready");
     } else {
       engineStatus.textContent = "Uyarı: Referans resimleri yüklenemedi!";
@@ -527,6 +782,7 @@
       loadedTestImg = await dataUrlToImage(ev.target.result);
       selection = null;
       resetSelectionBtn.style.display = "none";
+      feedbackBox.style.display = "none";
 
       const maxW = 520;
       const scale = Math.min(1, maxW / loadedTestImg.naturalWidth);
@@ -546,22 +802,86 @@
     fileInput.value = "";
     loadedTestImg = null;
     selection = null;
+    lastAnalysisContext = null;
     canvasWrap.style.display = "none";
     cropHint.style.display = "none";
     resetSelectionBtn.style.display = "none";
     aiReasonBox.style.display = "none";
+    feedbackBox.style.display = "none";
     topResult.textContent = "Henüz analiz yapılmadı.";
     renderBars({});
   });
 
-  // Ücretsiz katman (Free Tier) kotalı gerçek Flash modelleriyle analiz
+  async function showFeedbackPanel(winnerId, croppedDataUrl) {
+    const thumbDataUrl = await resizeDataUrl(croppedDataUrl, 280);
+    lastAnalysisContext = {
+      predictedDefectId: winnerId,
+      thumbDataUrl
+    };
+    correctDefectSelect.value = winnerId;
+    wrongPicker.style.display = "none";
+    fbSavedMsg.style.display = "none";
+    feedbackBox.style.display = "block";
+  }
+
+  fbYesBtn.addEventListener("click", () => {
+    if (!lastAnalysisContext) return;
+    fieldFeedbackList.push({
+      status: "confirmed",
+      predictedDefectId: lastAnalysisContext.predictedDefectId,
+      finalDefectId: lastAnalysisContext.predictedDefectId,
+      thumbDataUrl: lastAnalysisContext.thumbDataUrl,
+      dateStr: new Date().toLocaleString("tr-TR")
+    });
+    saveFieldFeedbackList();
+    wrongPicker.style.display = "none";
+    fbSavedMsg.textContent = "✅ Teşekkürler! Bu vaka 'Saha Ön Değerlendirme Havuzu'na eklendi (0-30 kesin arşive karışmaz).";
+    fbSavedMsg.style.display = "block";
+  });
+
+  fbNoBtn.addEventListener("click", () => {
+    wrongPicker.style.display = "block";
+    fbSavedMsg.style.display = "none";
+  });
+
+  saveCorrectionBtn.addEventListener("click", () => {
+    if (!lastAnalysisContext) return;
+    const chosenId = correctDefectSelect.value;
+    fieldFeedbackList.push({
+      status: "corrected",
+      predictedDefectId: lastAnalysisContext.predictedDefectId,
+      finalDefectId: chosenId,
+      thumbDataUrl: lastAnalysisContext.thumbDataUrl,
+      dateStr: new Date().toLocaleString("tr-TR")
+    });
+    saveFieldFeedbackList();
+    wrongPicker.style.display = "none";
+    fbSavedMsg.textContent = "🔄 Düzeltmeniz kaydedildi! Yapay zeka sonraki analizlerde bu saha uyarısını dikkate alacak.";
+    fbSavedMsg.style.display = "block";
+  });
+
+  fbUnsureBtn.addEventListener("click", () => {
+    if (!lastAnalysisContext) return;
+    fieldFeedbackList.push({
+      status: "unsure",
+      predictedDefectId: lastAnalysisContext.predictedDefectId,
+      finalDefectId: "belirsiz",
+      thumbDataUrl: lastAnalysisContext.thumbDataUrl,
+      dateStr: new Date().toLocaleString("tr-TR")
+    });
+    saveFieldFeedbackList();
+    wrongPicker.style.display = "none";
+    fbSavedMsg.textContent = "🤷 Anlaşıldı. Bu görsel yapay zekaya hatalı bilgi vermemek için 'İnceleme Bekleyenler' listesine ayrıldı.";
+    fbSavedMsg.style.display = "block";
+  });
+
   async function analyzeWithGemini(apiKey, testDataUrl) {
     const guideContext = DEFECTS.map(d => `- ${d.id} (${d.name}): ${d.guide.replace(/\s+/g, " ").slice(0, 220)}`).join("\n");
 
     const parts = [
       {
         text: `Sen endüstriyel tissue kağıdı üretim hattında uzman bir kalite kontrol mühendisisin.
-Aşağıdaki 6 hata kategorisinin teknik tanımlarını ve referans fotoğraflarını inceleyip en sondaki TEST FOTOĞRAFINI teşhis et:
+Aşağıdaki 6 hata kategorisinin teknik tanımlarını ve YÖNETİCİ KESİN REFERANS fotoğraflarını inceleyip en sondaki TEST FOTOĞRAFINI teşhis et:
 ${guideContext}
 
 Yüzdeleri toplamı 100 olacak şekilde dağıt ve 1-2 cümlelik net teknik gerekçe yaz.
@@ -570,16 +890,32 @@ SADECE geçerli JSON döndür:
       }
     ];
 
+    // 1. Katman: Yönetici Kesin Referansları (0-30 arası)
     for (const d of DEFECTS) {
       const items = (refStore[d.id] || []).slice(0, 2);
       items.forEach((item, idx) => {
-        parts.push({ text: `REF (${d.id} #${idx + 1}):` });
+        parts.push({ text: `KESİN REFERANS (${d.id} #${idx + 1}):` });
         parts.push({ inline_data: { mime_type: "image/jpeg", data: item.dataUrl.split(",")[1] } });
       });
     }
 
+    // 2. Katman: Kesin Olmayan Saha Ön Değerlendirmeleri (en son 3 onaylı/düzeltilmiş vaka)
+    const validFieldExamples = fieldFeedbackList.filter(x => x.status === "confirmed" || x.status === "corrected").slice(-3);
+    if (validFieldExamples.length > 0) {
+      parts.push({
+        text: "EK BİLGİ — DAHA ÖNCE SAHADA DEĞERLENDİRİLMİŞ ÖRNEKLER (Kesin referans değildir, yardımcı saha ipucu olarak dikkate al):"
+      });
+      validFieldExamples.forEach((ex, i) => {
+        const note = ex.status === "corrected"
+          ? `Saha Geri Bildirimi #${i + 1}: İlk tahminde '${ex.predictedDefectId}' sanıldı ancak operatör tarafından '${ex.finalDefectId}' olarak düzeltildi.`
+          : `Saha Geri Bildirimi #${i + 1}: Operatör tarafından '${ex.finalDefectId}' olarak değerlendirildi.`;
+        parts.push({ text: note });
+        parts.push({ inline_data: { mime_type: "image/jpeg", data: ex.thumbDataUrl.split(",")[1] } });
+      });
+    }
+
     const resizedTest = await resizeDataUrl(testDataUrl, 512);
-    parts.push({ text: "TEST HATASI:" });
+    parts.push({ text: "TEST HATASI (BUNU TEŞHİS ET):" });
     parts.push({ inline_data: { mime_type: "image/jpeg", data: resizedTest.split(",")[1] } });
 
     const payload = JSON.stringify({
@@ -590,7 +926,6 @@ SADECE geçerli JSON döndür:
       }
     });
 
-    // Free-Tier açık hızlı Flash modelleri (Pro modelleri limit:0 olduğu için çıkarıldı)
     const models = [
       "gemini-3.1-flash-lite-preview",
       "gemini-3-flash-preview",
@@ -651,6 +986,7 @@ SADECE geçerli JSON döndür:
         try {
           topResult.textContent = "🤖 Gemini Yapay Zeka görseli inceliyor...";
           aiReasonBox.style.display = "none";
+          feedbackBox.style.display = "none";
           const aiRes = await analyzeWithGemini(apiKey, cropped.dataUrl);
           const percentages = aiRes.scores;
 
@@ -672,6 +1008,7 @@ SADECE geçerli JSON döndür:
           renderBars(percentages);
           defectSelect.value = winner.id;
           guideText.textContent = winner.guide;
+          await showFeedbackPanel(winner.id, cropped.dataUrl);
           return;
         } catch (err) {
           aiReasonBox.textContent = `⚠️ AI Uyarısı: ${err.message} — Şu an yedek yerel motor çalışıyor.`;
@@ -717,6 +1054,7 @@ SADECE geçerli JSON döndür:
       renderBars(percentages);
       defectSelect.value = winner.id;
       guideText.textContent = winner.guide;
+      await showFeedbackPanel(winner.id, cropped.dataUrl);
     } finally {
       analyzeBtn.disabled = false;
     }
