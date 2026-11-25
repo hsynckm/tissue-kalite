@@ -1,0 +1,8 @@
+Broke lekesi
+Genellikle açılmamış broke hattından gelir,utm pulperden atılan brokeda olumsuz etkileyebilir
+
+Yapılacaklar
+1-broke miktarını azaltmak,gerekirse daha uygun bir üretime geçilene kadar kapatmak
+2-kısa dump chest ve broke chestten numuneler alarak açılmamış broke nereden geldiği netleşttirlirse sorun daha hızlı azaltılır veya çözülebilir
+3-utm hattından atılan brokeların tam açıldığından emin olmadan yollamamak gerekir
+4-broke pulpere verilen kostik dozajını doğrulamak gerekir,geçici olarak dozaj arttıralabilinir,şarjdaki broke açıldığından emin olmadan yollanmamlıdır

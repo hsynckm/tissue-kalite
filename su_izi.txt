@@ -1,0 +1,7 @@
+Su İzi
+genellikle elek kaynaklı problemdir
+
+Yapılacaklar
+1-elek gergisi kontrol edilir,elek gerilerek sorun çözülebilir
+2-gergi ile hızlı çözüm alınamıyorsa makine hızı düşülür
+3-elek su taşıması arttığından tilt,göğüs valsi ile suyun vuruş açısını değiştirerek sorun giderilmeye çalışılır

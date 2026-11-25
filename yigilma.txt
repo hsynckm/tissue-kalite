@@ -1,0 +1,10 @@
+Yığılma problemi;
+
+Genellikle keçe değişiminden sonra veya aniden ortaya çıkar
+Ana kaynağı press deliklerinin tıkanıp keçedeki fazla suyu ememesidir
+
+Yapılacaklar
+1-İlk olarak en hızlı çözüm makinenin hızını iz gidene kadar düşmektir
+2-Yeni keçe takılmışsa emici kasalardan birini kapatıp emişi emici valsa kaydırmak
+3-Visconip var ise basıncını düşmek (A-100 gibi)faydalı olur
+4-Aniden çıkan erime durup emici vals gömlek değişmini.Keçe değişiminden sonra oluşan bir sorun ise bir sonraki keçe değşiminde emici vals gömlek değişiminide gerektirebilir

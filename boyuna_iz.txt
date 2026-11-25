@@ -1,0 +1,7 @@
+Boyuna İz;
+Kağıtta kesintisiz olarak hep aynı yerden gelen izdir
+Elek,keçe ve headbox nedenli olabilir.en çok karşılaşılan divider ucundaki kırılma ikinci sırada ise keçe boyu doku bozulması vardır
+
+Yapılacaklar
+1-Keçe boyunca problemli yerin ölçüsüne gelen yere bakılarak keçe dokusunda şeffaflaşma açılma varmı kontrol edilir
+2-Headbox lamel divider kontrolü,headbox açılırak soun azalıyor veya kayboluyor heabox ve divider kontrolü yapmak gerekebilir
