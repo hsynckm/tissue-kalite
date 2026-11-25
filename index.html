@@ -64,6 +64,7 @@
     }
     #analyzeBtn { background: var(--primary); color: #fff; min-width: 140px; }
     #analyzeBtn:hover { background: var(--primary-hover); }
+    #analyzeBtn:disabled { opacity: 0.6; cursor: wait; }
     #resetSelectionBtn { background: #0284c7; color: #fff; flex: 0.6; display: none; }
     #clearBtn { background: #334155; color: var(--text); flex: 0.45; }
     .top-result {
@@ -97,13 +98,13 @@
 <body>
 <div class="container">
   <header>
-    <h1>Tissue Kalite Kontrol - Görsel Hata Teşhis Sistemi (v3.1)</h1>
+    <h1>Tissue Kalite Kontrol - Görsel Hata Teşhis Sistemi (v3.2 Fast)</h1>
     <span id="engineStatus" class="status-badge">Referans fotoğraflar ve rehberler yükleniyor...</span>
   </header>
 
   <div class="ai-bar">
     <label for="apiKeyInput">🤖 Gemini API Anahtarı (Cihaz Hafızasına Kaydedilir):</label>
-    <input type="password" id="apiKeyInput" placeholder="Yeni aldığınız AIzaSy... anahtarını buraya yapıştırın" />
+    <input type="password" id="apiKeyInput" placeholder="AIzaSy... anahtarınızı buraya yapıştırın" />
   </div>
 
   <div class="grid">
@@ -326,10 +327,10 @@
       out.height = loadedTestImg.naturalHeight;
       ctx.drawImage(loadedTestImg, 0, 0);
     }
-    return { canvas: out, dataUrl: out.toDataURL("image/jpeg", 0.92) };
+    return { canvas: out, dataUrl: out.toDataURL("image/jpeg", 0.9) };
   }
 
-  function resizeDataUrl(dataUrl, maxDim = 640) {
+  function resizeDataUrl(dataUrl, maxDim = 384) {
     return new Promise((resolve) => {
       const img = new Image();
       img.onload = () => {
@@ -338,7 +339,7 @@
         c.width = Math.round(img.naturalWidth * scale);
         c.height = Math.round(img.naturalHeight * scale);
         c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
-        resolve(c.toDataURL("image/jpeg", 0.82));
+        resolve(c.toDataURL("image/jpeg", 0.78));
       };
       img.src = dataUrl;
     });
@@ -492,7 +493,7 @@
         tasks.push(
           fetchImageAsDataUrl(fname)
             .then(async (rawUrl) => {
-              const dataUrl = await resizeDataUrl(rawUrl, 640);
+              const dataUrl = await resizeDataUrl(rawUrl, 384);
               const img = await dataUrlToImage(dataUrl);
               const sig = extractTextureSignature(img);
               refStore[d.id].push({ sig, dataUrl });
@@ -552,23 +553,18 @@
     renderBars({});
   });
 
+  // 20 saniye zaman aşımı korumalı ve hızlı Flash öncelikli Gemini AI motoru
   async function analyzeWithGemini(apiKey, testDataUrl) {
-    const guideContext = DEFECTS.map(d => `- ${d.id} (${d.name}): ${d.guide.replace(/\s+/g, " ").slice(0, 280)}`).join("\n");
+    const guideContext = DEFECTS.map(d => `- ${d.id} (${d.name}): ${d.guide.replace(/\s+/g, " ").slice(0, 220)}`).join("\n");
 
     const parts = [
       {
-        text: `Sen endüstriyel tissue kağıdı üretim hattında çalışan uzman bir kalite kontrol ve proses mühendisisin.
-Aşağıda 6 farklı kağıt üretim hatasının teknik tanımları ve referans fotoğrafları verilmiştir. En sonda ise operatörün sahadan çektiği TEST HATASI fotoğrafı yer almaktadır.
-
-HATA KATEGORİLERİ VE TEKNİK ÖZELLİKLERİ:
+        text: `Sen endüstriyel tissue kağıdı üretim hattında uzman bir kalite kontrol mühendisisin.
+Aşağıdaki 6 hata kategorisinin teknik tanımlarını ve referans fotoğraflarını inceleyip en sondaki TEST FOTOĞRAFINI teşhis et:
 ${guideContext}
 
-GÖREVİN:
-1. Referans fotoğraflardaki görsel dokuyu (katlanma, kabarcık, boyuna çizgi, leke, erime, krepaj yığılması) karşılaştır.
-2. En sondaki TEST FOTOĞRAFININ bu 6 kategoriden hangisi olduğunu belirle ve olasılık yüzdelerini dağıt (toplamları 100 olsun).
-3. Neden o hatayı seçtiğini 1-2 net cümleyle açıkla.
-
-SADECE aşağıdaki JSON formatında yanıt ver:
+Yüzdeleri toplamı 100 olacak şekilde dağıt ve 1-2 cümlelik net teknik gerekçe yaz.
+SADECE geçerli JSON döndür:
 {"scores":{"su_izi":0,"blof":0,"boyuna_iz":0,"broke_lekesi":0,"erime":0,"yigilma":0},"reason":"Teknik açıklama"}`
       }
     ];
@@ -576,56 +572,60 @@ SADECE aşağıdaki JSON formatında yanıt ver:
     for (const d of DEFECTS) {
       const items = (refStore[d.id] || []).slice(0, 2);
       items.forEach((item, idx) => {
-        parts.push({ text: `REFERANS (${d.id} - Örnek ${idx + 1}):` });
-        const b64 = item.dataUrl.split(",")[1];
-        parts.push({ inline_data: { mime_type: "image/jpeg", data: b64 } });
+        parts.push({ text: `REF (${d.id} #${idx + 1}):` });
+        parts.push({ inline_data: { mime_type: "image/jpeg", data: item.dataUrl.split(",")[1] } });
       });
     }
 
-    const resizedTest = await resizeDataUrl(testDataUrl, 640);
-    parts.push({ text: "TEST EDİLECEK HATA FOTOĞRAFI (BUNU TEŞHİS ET):" });
+    const resizedTest = await resizeDataUrl(testDataUrl, 512);
+    parts.push({ text: "TEST HATASI:" });
     parts.push({ inline_data: { mime_type: "image/jpeg", data: resizedTest.split(",")[1] } });
 
     const payload = JSON.stringify({
       contents: [{ parts }],
-      generationConfig: { temperature: 0.1 }
+      generationConfig: {
+        temperature: 0.1,
+        responseMimeType: "application/json"
+      }
     });
 
+    // Önce hızlı Flash modelleri dene, ardından Pro yedeğine bak
     const models = [
-      "gemini-3.1-pro-preview",
       "gemini-3.8-flash",
       "gemini-3.8-flash-lite",
-      "gemini-3.1-flash-lite-preview"
+      "gemini-3.1-flash-lite-preview",
+      "gemini-3.1-pro-preview"
     ];
-    let lastError = "Bağlantı sağlanamadı.";
+    let lastError = "Bağlantı zaman aşımına uğradı.";
 
     for (const model of models) {
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: payload
-          });
+      topResult.textContent = `🤖 Gemini AI (${model}) görseli inceliyor...`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // Max 20 sn bekle
 
-          if (!resp.ok) {
-            const errJson = await resp.json().catch(() => ({}));
-            lastError = errJson?.error?.message || ("HTTP " + resp.status);
-            if (resp.status === 503 || resp.status === 429) {
-              await new Promise(r => setTimeout(r, 1200));
-              continue;
-            }
-            break;
-          }
+      try {
+        const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: payload,
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
 
-          const json = await resp.json();
-          const rawText = json.candidates[0].content.parts[0].text.replace(/```json|```/g, "").trim();
-          const parsed = JSON.parse(rawText);
-          parsed._usedModel = model;
-          return parsed;
-        } catch (e) {
-          lastError = e.message;
+        if (!resp.ok) {
+          const errJson = await resp.json().catch(() => ({}));
+          lastError = errJson?.error?.message || ("HTTP " + resp.status);
+          continue;
         }
+
+        const json = await resp.json();
+        const rawText = json.candidates[0].content.parts[0].text.replace(/```json|```/g, "").trim();
+        const parsed = JSON.parse(rawText);
+        parsed._usedModel = model;
+        return parsed;
+      } catch (e) {
+        clearTimeout(timeoutId);
+        lastError = (e.name === "AbortError") ? `${model} 20 sn içinde yanıt vermedi` : e.message;
       }
     }
     throw new Error(lastError);
@@ -637,83 +637,88 @@ SADECE aşağıdaki JSON formatında yanıt ver:
       return;
     }
 
-    const loadedTotal = Object.values(refStore).reduce((acc, arr) => acc + arr.length, 0);
-    if (loadedTotal === 0) await initSystem();
+    analyzeBtn.disabled = true;
+    try {
+      const loadedTotal = Object.values(refStore).reduce((acc, arr) => acc + arr.length, 0);
+      if (loadedTotal === 0) await initSystem();
 
-    const cropped = getCroppedSource();
-    aiReasonBox.classList.remove("warn");
-    const apiKey = apiKeyInput.value.trim();
+      const cropped = getCroppedSource();
+      aiReasonBox.classList.remove("warn");
+      const apiKey = apiKeyInput.value.trim();
 
-    if (apiKey) {
-      try {
-        topResult.textContent = "🤖 Gemini Yapay Zeka görseli inceliyor...";
-        aiReasonBox.style.display = "none";
-        const aiRes = await analyzeWithGemini(apiKey, cropped.dataUrl);
-        const percentages = aiRes.scores;
+      if (apiKey) {
+        try {
+          topResult.textContent = "🤖 Gemini Yapay Zeka görseli inceliyor...";
+          aiReasonBox.style.display = "none";
+          const aiRes = await analyzeWithGemini(apiKey, cropped.dataUrl);
+          const percentages = aiRes.scores;
 
-        let winner = DEFECTS[0];
-        let maxPct = -1;
-        for (const d of DEFECTS) {
-          const pct = Number(percentages[d.id] || 0);
-          percentages[d.id] = pct;
-          if (pct > maxPct) {
-            maxPct = pct;
-            winner = d;
+          let winner = DEFECTS[0];
+          let maxPct = -1;
+          for (const d of DEFECTS) {
+            const pct = Number(percentages[d.id] || 0);
+            percentages[d.id] = pct;
+            if (pct > maxPct) {
+              maxPct = pct;
+              winner = d;
+            }
           }
+
+          const scopeNote = (selection && selection.w > 10) ? " [İşaretli Bölge]" : "";
+          topResult.textContent = `🤖 AI TESPİTİ${scopeNote}: ${winner.name} (%${maxPct.toFixed(1)})`;
+          aiReasonBox.textContent = `🤖 Gemini AI (${aiRes._usedModel}) Yorumu: ` + (aiRes.reason || "Analiz tamamlandı.");
+          aiReasonBox.style.display = "block";
+          renderBars(percentages);
+          defectSelect.value = winner.id;
+          guideText.textContent = winner.guide;
+          return;
+        } catch (err) {
+          aiReasonBox.textContent = `⚠️ AI Uyarısı: ${err.message} — Şu an yedek yerel motor çalışıyor.`;
+          aiReasonBox.classList.add("warn");
+          aiReasonBox.style.display = "block";
         }
-
-        const scopeNote = (selection && selection.w > 10) ? " [İşaretli Bölge]" : "";
-        topResult.textContent = `🤖 AI TESPİTİ${scopeNote}: ${winner.name} (%${maxPct.toFixed(1)})`;
-        aiReasonBox.textContent = `🤖 Gemini AI (${aiRes._usedModel}) Yorumu: ` + (aiRes.reason || "Analiz tamamlandı.");
-        aiReasonBox.style.display = "block";
-        renderBars(percentages);
-        defectSelect.value = winner.id;
-        guideText.textContent = winner.guide;
-        return;
-      } catch (err) {
-        aiReasonBox.textContent = `⚠️ AI Geçici Yoğunluk: ${err.message} — Şu an yedek yerel motor çalışıyor.`;
-        aiReasonBox.classList.add("warn");
-        aiReasonBox.style.display = "block";
       }
+
+      const testSig = extractTextureSignature(cropped.canvas);
+      const rawScores = {};
+      let totalScore = 0;
+
+      for (const d of DEFECTS) {
+        const items = refStore[d.id] || [];
+        if (items.length === 0) {
+          rawScores[d.id] = 0;
+          continue;
+        }
+        let bestScore = 0;
+        for (const item of items) {
+          const s = compareSignatures(item.sig, testSig);
+          if (s > bestScore) bestScore = s;
+        }
+        rawScores[d.id] = bestScore;
+        totalScore += bestScore;
+      }
+
+      const percentages = {};
+      let winner = DEFECTS[0];
+      let maxPct = -1;
+
+      for (const d of DEFECTS) {
+        const pct = totalScore > 0 ? (rawScores[d.id] / totalScore) * 100 : 0;
+        percentages[d.id] = pct;
+        if (pct > maxPct) {
+          maxPct = pct;
+          winner = d;
+        }
+      }
+
+      const scopeNote = (selection && selection.w > 10) ? " [İşaretli Bölge]" : "";
+      topResult.textContent = `⚙️ YEREL MOTOR TESPİTİ${scopeNote}: ${winner.name} (%${maxPct.toFixed(1)})`;
+      renderBars(percentages);
+      defectSelect.value = winner.id;
+      guideText.textContent = winner.guide;
+    } finally {
+      analyzeBtn.disabled = false;
     }
-
-    const testSig = extractTextureSignature(cropped.canvas);
-    const rawScores = {};
-    let totalScore = 0;
-
-    for (const d of DEFECTS) {
-      const items = refStore[d.id] || [];
-      if (items.length === 0) {
-        rawScores[d.id] = 0;
-        continue;
-      }
-      let bestScore = 0;
-      for (const item of items) {
-        const s = compareSignatures(item.sig, testSig);
-        if (s > bestScore) bestScore = s;
-      }
-      rawScores[d.id] = bestScore;
-      totalScore += bestScore;
-    }
-
-    const percentages = {};
-    let winner = DEFECTS[0];
-    let maxPct = -1;
-
-    for (const d of DEFECTS) {
-      const pct = totalScore > 0 ? (rawScores[d.id] / totalScore) * 100 : 0;
-      percentages[d.id] = pct;
-      if (pct > maxPct) {
-        maxPct = pct;
-        winner = d;
-      }
-    }
-
-    const scopeNote = (selection && selection.w > 10) ? " [İşaretli Bölge]" : "";
-    topResult.textContent = `⚙️ YEREL MOTOR TESPİTİ${scopeNote}: ${winner.name} (%${maxPct.toFixed(1)})`;
-    renderBars(percentages);
-    defectSelect.value = winner.id;
-    guideText.textContent = winner.guide;
   });
 
   window.addEventListener("DOMContentLoaded", initSystem);
