@@ -552,7 +552,6 @@
     renderBars({});
   });
 
-  // Yoğunluk durumunda otomatik yeniden deneme ve yedek model geçişi
   async function analyzeWithGemini(apiKey, testDataUrl) {
     const guideContext = DEFECTS.map(d => `- ${d.id} (${d.name}): ${d.guide.replace(/\s+/g, " ").slice(0, 280)}`).join("\n");
 
@@ -592,8 +591,13 @@ SADECE aşağıdaki JSON formatında yanıt ver:
       generationConfig: { temperature: 0.1 }
     });
 
-    // Birincil ve yedek aktif modeller (biri yoğun olursa otomatik diğerine geçer)
-    const models = ["gemini-3.8-flash", "gemini-3.8-flash-lite", "gemini-3.8-pro", "gemini-2.5-pro"];
+    // Güncel aktif modeller (gemini-3.1-pro-preview dahil)
+    const models = [
+      "gemini-3.1-pro-preview",
+      "gemini-3.8-flash",
+      "gemini-3.8-flash-lite",
+      "gemini-3.1-flash-lite-preview"
+    ];
     let lastError = "Bağlantı sağlanamadı.";
 
     for (const model of models) {
