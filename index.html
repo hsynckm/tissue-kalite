@@ -487,7 +487,7 @@
     for (const d of DEFECTS) {
       refStore[d.id] = [];
       const candidates = [...d.baseFiles];
-      for (let n = 2; n <= 10; n++) candidates.push(`${d.prefix}_${n}.jpg`);
+      for (let n = 1; n <= 30; n++) candidates.push(`${d.prefix}_${n}.jpg`);
 
       for (const fname of candidates) {
         tasks.push(
